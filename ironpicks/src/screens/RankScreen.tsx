@@ -46,30 +46,21 @@ export default function RankScreen() {
           <Text style={styles.pageSeason}>2025 Season</Text>
         </View>
 
-        {/* Top 3 podium */}
-        <View style={styles.podiumSection}>
-          {/* 2nd place — left */}
-          <PodiumBlock
-            entry={top3[1]}
-            rank={2}
-            height={72}
-            color={Colors.navy}
-          />
-          {/* 1st place — center, tallest */}
-          <PodiumBlock
-            entry={top3[0]}
-            rank={1}
-            height={96}
-            color={Colors.maroon}
-          />
-          {/* 3rd place — right */}
-          <PodiumBlock
-            entry={top3[2]}
-            rank={3}
-            height={52}
-            color={Colors.navy}
-          />
-        </View>
+        {/* Top 3 podium — only rendered when at least 1 entry exists */}
+        {top3.length > 0 && (
+          <View style={styles.podiumSection}>
+            {/* 2nd place — left */}
+            {top3[1] && (
+              <PodiumBlock entry={top3[1]} rank={2} height={72} color={Colors.navy} />
+            )}
+            {/* 1st place — center, tallest */}
+            <PodiumBlock entry={top3[0]} rank={1} height={96} color={Colors.maroon} />
+            {/* 3rd place — right */}
+            {top3[2] && (
+              <PodiumBlock entry={top3[2]} rank={3} height={52} color={Colors.navy} />
+            )}
+          </View>
+        )}
 
         {/* Rest of leaderboard */}
         <View style={styles.listSection}>

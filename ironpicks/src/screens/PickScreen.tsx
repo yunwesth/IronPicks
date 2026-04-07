@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -42,11 +42,19 @@ export default function PickScreen() {
   const handleNextPick = () => {
     setSelected(null);
     setResult(null);
-    setWager(50);
+    setWager((prev) => Math.min(50, balance));
   };
 
+  // Keep wager within bounds whenever balance changes
+  useEffect(() => {
+    setWager((w) => Math.min(w, balance));
+  }, [balance]);
+
   const adjustWager = (delta: number) => {
-    setWager((w) => Math.min(balance, Math.max(10, w + delta)));
+    setWager((w) => {
+      const next = w + delta;
+      return Math.min(balance, Math.max(10, next));
+    });
   };
 
   const renderHeader = () => (
@@ -187,9 +195,9 @@ export default function PickScreen() {
 
         {/* Lock in button */}
         <TouchableOpacity
-          style={[styles.lockInBtn, !selected && styles.lockInBtnDisabled]}
+          style={[styles.lockInBtn, (!selected || wager > balance) && styles.lockInBtnDisabled]}
           onPress={handleLockIn}
-          disabled={!selected}
+          disabled={!selected || wager > balance}
           activeOpacity={0.85}
         >
           <Text style={styles.lockInBtnText}>Lock In Pick</Text>
