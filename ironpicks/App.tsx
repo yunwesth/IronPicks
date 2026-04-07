@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -29,6 +29,39 @@ import LockIcon from './src/components/icons/LockIcon';
 
 const Tab = createBottomTabNavigator();
 
+function AppNavigator() {
+  return (
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar style="dark" />
+        <Tab.Navigator
+          screenOptions={({ route }) => ({
+            headerShown: false,
+            tabBarStyle: styles.tabBar,
+            tabBarActiveTintColor: Colors.maroon,
+            tabBarInactiveTintColor: Colors.tabInactive,
+            tabBarLabelStyle: styles.tabLabel,
+            tabBarItemStyle: styles.tabItem,
+            tabBarIcon: ({ color }) => {
+              const size = 22;
+              if (route.name === 'Pick') return <StarIcon size={size} color={color} />;
+              if (route.name === 'Game') return <CalendarIcon size={size} color={color} />;
+              if (route.name === 'Rank') return <BarChartIcon size={size} color={color} />;
+              if (route.name === 'Redeem') return <LockIcon size={size} color={color} />;
+              return null;
+            },
+          })}
+        >
+          <Tab.Screen name="Pick" component={PickScreen} />
+          <Tab.Screen name="Game" component={GameScreen} />
+          <Tab.Screen name="Rank" component={RankScreen} />
+          <Tab.Screen name="Redeem" component={RedeemScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     BarlowCondensedBold: BarlowCondensed_700Bold,
@@ -45,41 +78,20 @@ export default function App() {
     );
   }
 
-  return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerShown: false,
-            tabBarStyle: styles.tabBar,
-            tabBarActiveTintColor: Colors.maroon,
-            tabBarInactiveTintColor: Colors.tabInactive,
-            tabBarLabelStyle: styles.tabLabel,
-            tabBarItemStyle: styles.tabItem,
-            tabBarIcon: ({ color, focused }) => {
-              const size = 22;
-              if (route.name === 'Pick') {
-                return <StarIcon size={size} color={color} />;
-              } else if (route.name === 'Game') {
-                return <CalendarIcon size={size} color={color} />;
-              } else if (route.name === 'Rank') {
-                return <BarChartIcon size={size} color={color} />;
-              } else if (route.name === 'Redeem') {
-                return <LockIcon size={size} color={color} />;
-              }
-              return null;
-            },
-          })}
-        >
-          <Tab.Screen name="Pick" component={PickScreen} />
-          <Tab.Screen name="Game" component={GameScreen} />
-          <Tab.Screen name="Rank" component={RankScreen} />
-          <Tab.Screen name="Redeem" component={RedeemScreen} />
-        </Tab.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
-  );
+  // On web: render app inside a phone-shaped frame centered on the page
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.webBackground}>
+        <View style={styles.phoneShadow}>
+          <View style={styles.phoneFrame}>
+            <AppNavigator />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return <AppNavigator />;
 }
 
 const styles = StyleSheet.create({
@@ -107,5 +119,30 @@ const styles = StyleSheet.create({
   tabItem: {
     paddingTop: 11,
     paddingBottom: 13,
+  },
+  // Web-only phone frame
+  webBackground: {
+    flex: 1,
+    backgroundColor: '#0F1623',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneShadow: {
+    borderRadius: 44,
+    // Web shadow via elevation fallback — actual CSS shadow applied via style prop
+    elevation: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 24 },
+    shadowOpacity: 0.6,
+    shadowRadius: 48,
+  },
+  phoneFrame: {
+    width: 390,
+    height: 844,
+    borderRadius: 44,
+    overflow: 'hidden',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 });

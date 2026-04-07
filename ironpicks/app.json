@@ -25,7 +25,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "publicPath": "/IronPicks/"
+      "publicPath": "/IronPicks/",
+      "bundler": "metro"
     }
   }
 }

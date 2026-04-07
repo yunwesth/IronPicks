@@ -36,16 +36,88 @@ export const STREAK = {
   total: 5,
 };
 
-export const ACTIVE_QUESTION = {
-  id: 'q1',
-  text: 'Will Alcantara drive in a run this at-bat?',
-  multiplier: 2,
-  label: 'CRITICAL MOMENT · RISP',
-  options: [
-    { id: 'scores', label: 'Scores' },
-    { id: 'holds', label: 'Holds' },
-  ],
-};
+export const SCENARIOS = [
+  {
+    id: 'q1',
+    text: 'Will Alcantara drive in a run this at-bat?',
+    multiplier: 2,
+    label: 'CRITICAL MOMENT · RISP',
+    options: [
+      { id: 'yes', label: 'Scores' },
+      { id: 'no', label: 'Holds' },
+    ],
+    correctId: 'yes',
+    correctMsg: 'Alcantara laces an RBI single to left — streak lives!',
+    incorrectMsg: 'Alcantara grounds into a double play — tough break.',
+  },
+  {
+    id: 'q2',
+    text: 'Will Spence strike out the next batter?',
+    multiplier: 1.5,
+    label: 'PITCHER DUEL · FULL COUNT',
+    options: [
+      { id: 'yes', label: 'Strikeout' },
+      { id: 'no', label: 'No K' },
+    ],
+    correctId: 'no',
+    correctMsg: 'Volpe works a walk — Spence loses the battle.',
+    incorrectMsg: 'Spence paints the corner — punchout! Crowd erupts.',
+  },
+  {
+    id: 'q3',
+    text: 'Will the IronPigs score this inning?',
+    multiplier: 1.5,
+    label: 'INNING OPENER · BOT 7',
+    options: [
+      { id: 'yes', label: 'Score' },
+      { id: 'no', label: 'Shut Out' },
+    ],
+    correctId: 'yes',
+    correctMsg: 'Tovar singles home Romero — IronPigs extend the lead!',
+    incorrectMsg: 'Three up, three down — RailRiders hold firm.',
+  },
+  {
+    id: 'q4',
+    text: 'Will Romero successfully steal second base?',
+    multiplier: 3,
+    label: 'HIGH RISK · RUNNER ON 1ST',
+    options: [
+      { id: 'yes', label: 'Safe' },
+      { id: 'no', label: 'Out' },
+    ],
+    correctId: 'yes',
+    correctMsg: 'Romero beats the throw by a step — stolen base!',
+    incorrectMsg: 'Romero is gunned down — caught stealing.',
+  },
+  {
+    id: 'q5',
+    text: 'Will the next pitch be a ball or strike?',
+    multiplier: 1,
+    label: 'QUICK PICK · NEXT PITCH',
+    options: [
+      { id: 'yes', label: 'Strike' },
+      { id: 'no', label: 'Ball' },
+    ],
+    correctId: 'no',
+    correctMsg: 'Ball four — Spence loses control of the zone.',
+    incorrectMsg: 'Filthy slider catches the corner — strike called!',
+  },
+  {
+    id: 'q6',
+    text: 'Will De La Cruz hit a home run this at-bat?',
+    multiplier: 5,
+    label: 'POWER SHOT · 3-2 COUNT',
+    options: [
+      { id: 'yes', label: 'Gone' },
+      { id: 'no', label: 'Stay' },
+    ],
+    correctId: 'yes',
+    correctMsg: 'De La Cruz crushes one to deep left — GONE! Coca-Cola Park erupts!',
+    incorrectMsg: 'De La Cruz flies out to the warning track — so close.',
+  },
+];
+
+export const ACTIVE_QUESTION = SCENARIOS[0];
 
 export const PLAY_BY_PLAY = [
   {

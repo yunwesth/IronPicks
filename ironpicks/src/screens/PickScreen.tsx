@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,55 +6,133 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { ACTIVE_QUESTION, STREAK, WALLET } from '../constants/mockData';
+import { SCENARIOS, STREAK, WALLET } from '../constants/mockData';
 import Scoreboard from '../components/Scoreboard';
 import BIcon from '../components/icons/BIcon';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import XCircleIcon from '../components/icons/XCircleIcon';
 import FlameIcon from '../components/icons/FlameIcon';
 
-type PickOption = 'scores' | 'holds' | null;
 type ResultState = 'correct' | 'incorrect' | null;
 
 export default function PickScreen() {
-  const [selected, setSelected] = useState<PickOption>(null);
+  const [scenarioIndex, setScenarioIndex] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
   const [wager, setWager] = useState(50);
   const [result, setResult] = useState<ResultState>(null);
   const [streakCount, setStreakCount] = useState(STREAK.correct);
   const [balance, setBalance] = useState(WALLET.balance);
 
+  const scenario = SCENARIOS[scenarioIndex % SCENARIOS.length];
+
+  // Animations
+  const cardAnim = useRef(new Animated.Value(0)).current;
+  const resultAnim = useRef(new Animated.Value(0)).current;
+  const optionScaleA = useRef(new Animated.Value(1)).current;
+  const optionScaleB = useRef(new Animated.Value(1)).current;
+  const lockBtnPulse = useRef(new Animated.Value(1)).current;
+
+  // Card entrance on scenario change
+  useEffect(() => {
+    cardAnim.setValue(0);
+    Animated.spring(cardAnim, {
+      toValue: 1,
+      tension: 60,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, [scenarioIndex]);
+
+  // Pulse lock-in button when an option is selected
+  useEffect(() => {
+    if (selected && !result) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(lockBtnPulse, { toValue: 1.03, duration: 600, useNativeDriver: true }),
+          Animated.timing(lockBtnPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      lockBtnPulse.setValue(1);
+    }
+  }, [selected, result]);
+
+  // Clamp wager whenever balance changes
+  useEffect(() => {
+    setWager((w) => Math.min(w, balance));
+  }, [balance]);
+
+  const animateOptionTap = (isA: boolean) => {
+    const anim = isA ? optionScaleA : optionScaleB;
+    Animated.sequence([
+      Animated.spring(anim, { toValue: 0.92, tension: 200, friction: 8, useNativeDriver: true }),
+      Animated.spring(anim, { toValue: 1, tension: 200, friction: 8, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleSelect = (id: string, isA: boolean) => {
+    animateOptionTap(isA);
+    setSelected(id);
+  };
+
   const handleLockIn = () => {
-    // Simulate result — correct if 'scores' picked
-    const isCorrect = selected === 'scores';
+    const isCorrect = selected === scenario.correctId;
+    resultAnim.setValue(0);
     setResult(isCorrect ? 'correct' : 'incorrect');
     if (isCorrect) {
-      setBalance((b) => b + wager * ACTIVE_QUESTION.multiplier);
+      setBalance((b) => b + wager * scenario.multiplier);
       setStreakCount((s) => s + 1);
     } else {
       setBalance((b) => Math.max(0, b - wager));
       setStreakCount(0);
     }
+    Animated.spring(resultAnim, {
+      toValue: 1,
+      tension: 50,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleNextPick = () => {
     setSelected(null);
     setResult(null);
     setWager((prev) => Math.min(50, balance));
+    setScenarioIndex((i) => i + 1);
   };
 
-  // Keep wager within bounds whenever balance changes
-  useEffect(() => {
-    setWager((w) => Math.min(w, balance));
-  }, [balance]);
-
   const adjustWager = (delta: number) => {
-    setWager((w) => {
-      const next = w + delta;
-      return Math.min(balance, Math.max(10, next));
-    });
+    setWager((w) => Math.min(balance, Math.max(10, w + delta)));
+  };
+
+  const cardStyle = {
+    opacity: cardAnim,
+    transform: [
+      {
+        translateY: cardAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [24, 0],
+        }),
+      },
+    ],
+  };
+
+  const resultStyle = {
+    opacity: resultAnim,
+    transform: [
+      {
+        scale: resultAnim.interpolate({
+          inputRange: [0, 0.6, 1],
+          outputRange: [0.75, 1.04, 1],
+        }),
+      },
+    ],
   };
 
   const renderHeader = () => (
@@ -80,7 +158,7 @@ export default function PickScreen() {
   const renderDivider = () => (
     <View style={styles.divider}>
       <View style={styles.hairline} />
-      <Text style={styles.dividerText}>{ACTIVE_QUESTION.label}</Text>
+      <Text style={styles.dividerText}>{scenario.label}</Text>
       <View style={styles.hairline} />
     </View>
   );
@@ -89,125 +167,93 @@ export default function PickScreen() {
     if (result !== null) {
       const isCorrect = result === 'correct';
       return (
-        <View style={styles.resultCard}>
+        <Animated.View style={[styles.resultCard, resultStyle]}>
           <Text style={[styles.resultLabel, { color: isCorrect ? Colors.green : Colors.red }]}>
             {isCorrect ? 'CORRECT' : 'INCORRECT'}
           </Text>
-          <Text
-            style={[
-              styles.resultPoints,
-              { color: isCorrect ? Colors.green : Colors.red },
-            ]}
-          >
-            {isCorrect ? `+${wager * ACTIVE_QUESTION.multiplier} BB` : `-${wager} BB`}
+          <Text style={[styles.resultPoints, { color: isCorrect ? Colors.green : Colors.red }]}>
+            {isCorrect ? `+${wager * scenario.multiplier} BB` : `-${wager} BB`}
           </Text>
           <Text style={styles.resultDescription}>
-            {isCorrect
-              ? 'Alcantara drove in the run — streak continues!'
-              : 'Alcantara was retired — better luck next at-bat.'}
+            {isCorrect ? scenario.correctMsg : scenario.incorrectMsg}
           </Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNextPick}>
-            <Text style={styles.nextButtonText}>Next pick</Text>
+          <TouchableOpacity style={styles.nextButton} onPress={handleNextPick} activeOpacity={0.8}>
+            <Text style={styles.nextButtonText}>Next pick →</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       );
     }
 
+    const [optA, optB] = scenario.options;
+
     return (
-      <View style={styles.challengeCard}>
-        {/* Card header */}
+      <Animated.View style={[styles.challengeCard, cardStyle]}>
         <View style={styles.challengeHeader}>
           <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
+            <Text style={styles.streakBadgeText}>{scenario.multiplier}× BONUS</Text>
           </View>
         </View>
 
-        {/* Question */}
-        <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
+        <Text style={styles.questionText}>{scenario.text}</Text>
 
-        {/* Options */}
         <View style={styles.optionsGrid}>
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'scores' && styles.optionButtonGreen,
-            ]}
-            onPress={() => setSelected('scores')}
-            activeOpacity={0.8}
-          >
-            <CheckCircleIcon
-              size={20}
-              color={selected === 'scores' ? Colors.green : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'scores' && styles.optionLabelGreen,
-              ]}
+          <Animated.View style={{ flex: 1, transform: [{ scale: optionScaleA }] }}>
+            <TouchableOpacity
+              style={[styles.optionButton, selected === optA.id && styles.optionButtonGreen]}
+              onPress={() => handleSelect(optA.id, true)}
+              activeOpacity={0.8}
             >
-              Scores
-            </Text>
-          </TouchableOpacity>
+              <CheckCircleIcon size={20} color={selected === optA.id ? Colors.green : Colors.muted} />
+              <Text style={[styles.optionLabel, selected === optA.id && styles.optionLabelGreen]}>
+                {optA.label}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
 
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'holds' && styles.optionButtonRed,
-            ]}
-            onPress={() => setSelected('holds')}
-            activeOpacity={0.8}
-          >
-            <XCircleIcon
-              size={20}
-              color={selected === 'holds' ? Colors.red : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'holds' && styles.optionLabelRed,
-              ]}
+          <Animated.View style={{ flex: 1, transform: [{ scale: optionScaleB }] }}>
+            <TouchableOpacity
+              style={[styles.optionButton, selected === optB.id && styles.optionButtonRed]}
+              onPress={() => handleSelect(optB.id, false)}
+              activeOpacity={0.8}
             >
-              Holds
-            </Text>
-          </TouchableOpacity>
+              <XCircleIcon size={20} color={selected === optB.id ? Colors.red : Colors.muted} />
+              <Text style={[styles.optionLabel, selected === optB.id && styles.optionLabelRed]}>
+                {optB.label}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
 
-        {/* Wager row */}
         <View style={styles.wagerRow}>
           <Text style={styles.wagerLabel}>Wager</Text>
           <View style={styles.wagerControls}>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(-10)}
-            >
+            <TouchableOpacity style={styles.wagerBtn} onPress={() => adjustWager(-10)}>
               <Text style={styles.wagerBtnText}>−</Text>
             </TouchableOpacity>
             <Text style={styles.wagerAmount}>{wager} BB</Text>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(10)}
-            >
+            <TouchableOpacity style={styles.wagerBtn} onPress={() => adjustWager(10)}>
               <Text style={styles.wagerBtnText}>+</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Lock in button */}
-        <TouchableOpacity
-          style={[styles.lockInBtn, (!selected || wager > balance) && styles.lockInBtnDisabled]}
-          onPress={handleLockIn}
-          disabled={!selected || wager > balance}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.lockInBtnText}>Lock In Pick</Text>
-        </TouchableOpacity>
-      </View>
+        <Animated.View style={{ transform: [{ scale: lockBtnPulse }] }}>
+          <TouchableOpacity
+            style={[styles.lockInBtn, (!selected || wager > balance) && styles.lockInBtnDisabled]}
+            onPress={handleLockIn}
+            disabled={!selected || wager > balance}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.lockInBtnText}>Lock In Pick</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
     );
   };
 
   const renderStreakBar = () => (
-    <View style={styles.streakBar}>
+    <Animated.View style={[styles.streakBar, cardStyle]}>
       <View style={styles.streakLeft}>
         <FlameIcon size={16} />
         <Text style={styles.streakCorrect}>{streakCount} correct</Text>
@@ -222,7 +268,7 @@ export default function PickScreen() {
           return <View key={i} style={[styles.streakPip, { backgroundColor: pipColor }]} />;
         })}
       </View>
-    </View>
+    </Animated.View>
   );
 
   return (
@@ -245,17 +291,9 @@ export default function PickScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    gap: 0,
-  },
-  // Header
+  safe: { flex: 1, backgroundColor: Colors.surface },
+  scroll: { flex: 1 },
+  scrollContent: { gap: 0 },
   headerBar: {
     backgroundColor: Colors.card,
     borderBottomWidth: 0.5,
@@ -266,18 +304,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logo: {
-    width: 44,
-    height: 44,
-  },
-  headerTextBlock: {
-    gap: 2,
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logo: { width: 44, height: 44 },
+  headerTextBlock: { gap: 2 },
   headerTeamName: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 14,
@@ -301,14 +330,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     gap: 5,
   },
-  walletText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 12,
-    color: Colors.navy,
-  },
+  walletText: { fontFamily: 'DMMonoMedium', fontSize: 12, color: Colors.navy },
   gap8: { height: 8 },
   gap16: { height: 16 },
-  // Divider
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -316,18 +340,13 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     gap: 8,
   },
-  hairline: {
-    flex: 1,
-    height: 0.5,
-    backgroundColor: Colors.border,
-  },
+  hairline: { flex: 1, height: 0.5, backgroundColor: Colors.border },
   dividerText: {
     fontFamily: 'DMMonoMedium',
     fontSize: 9,
     color: Colors.maroon,
     letterSpacing: 1,
   },
-  // Challenge card
   challengeCard: {
     backgroundColor: Colors.card,
     borderWidth: 0.5,
@@ -372,12 +391,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     lineHeight: 26,
   },
-  optionsGrid: {
-    flexDirection: 'row',
-    gap: 8,
-    marginHorizontal: 14,
-    marginBottom: 12,
-  },
+  optionsGrid: { flexDirection: 'row', gap: 8, marginHorizontal: 14, marginBottom: 12 },
   optionButton: {
     flex: 1,
     flexDirection: 'column',
@@ -390,28 +404,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     gap: 5,
   },
-  optionButtonGreen: {
-    borderColor: Colors.green,
-    backgroundColor: Colors.greenBg,
-    borderWidth: 1,
-  },
-  optionButtonRed: {
-    borderColor: Colors.red,
-    backgroundColor: Colors.redBg,
-    borderWidth: 1,
-  },
-  optionLabel: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 15,
-    color: Colors.muted,
-  },
-  optionLabelGreen: {
-    color: Colors.green,
-  },
-  optionLabelRed: {
-    color: Colors.red,
-  },
-  // Wager
+  optionButtonGreen: { borderColor: Colors.green, backgroundColor: Colors.greenBg, borderWidth: 1 },
+  optionButtonRed: { borderColor: Colors.red, backgroundColor: Colors.redBg, borderWidth: 1 },
+  optionLabel: { fontFamily: 'BarlowCondensedBold', fontSize: 15, color: Colors.muted },
+  optionLabelGreen: { color: Colors.green },
+  optionLabelRed: { color: Colors.red },
   wagerRow: {
     backgroundColor: Colors.card2,
     borderRadius: 10,
@@ -423,17 +420,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  wagerLabel: {
-    fontFamily: 'DMSans',
-    fontSize: 12,
-    fontWeight: '500',
-    color: Colors.textSecondary,
-  },
-  wagerControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  wagerLabel: { fontFamily: 'DMSans', fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
+  wagerControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wagerBtn: {
     width: 28,
     height: 28,
@@ -444,12 +432,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  wagerBtnText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 16,
-    color: Colors.textPrimary,
-    lineHeight: 20,
-  },
+  wagerBtnText: { fontFamily: 'DMMonoMedium', fontSize: 16, color: Colors.textPrimary, lineHeight: 20 },
   wagerAmount: {
     fontFamily: 'DMMonoMedium',
     fontSize: 13,
@@ -457,7 +440,6 @@ const styles = StyleSheet.create({
     minWidth: 60,
     textAlign: 'center',
   },
-  // Lock in button
   lockInBtn: {
     backgroundColor: Colors.maroon,
     borderRadius: 10,
@@ -466,16 +448,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  lockInBtnDisabled: {
-    opacity: 0.28,
-  },
+  lockInBtnDisabled: { opacity: 0.28 },
   lockInBtnText: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 17,
     color: '#F5EBED',
     letterSpacing: 0.5,
   },
-  // Result card
   resultCard: {
     backgroundColor: Colors.card,
     borderWidth: 0.5,
@@ -486,16 +465,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  resultLabel: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    letterSpacing: 1,
-  },
-  resultPoints: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 42,
-    lineHeight: 46,
-  },
+  resultLabel: { fontFamily: 'DMMonoMedium', fontSize: 9, letterSpacing: 1 },
+  resultPoints: { fontFamily: 'BarlowCondensedBold', fontSize: 42, lineHeight: 46 },
   resultDescription: {
     fontFamily: 'DMSans',
     fontSize: 12,
@@ -511,13 +482,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     marginTop: 4,
   },
-  nextButtonText: {
-    fontFamily: 'DMSans',
-    fontSize: 13,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-  },
-  // Streak bar
+  nextButtonText: { fontFamily: 'DMSans', fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
   streakBar: {
     backgroundColor: Colors.card,
     borderWidth: 0.5,
@@ -531,28 +496,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  streakLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  streakCorrect: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 13,
-    color: Colors.textPrimary,
-  },
-  streakInARow: {
-    fontFamily: 'DMSans',
-    fontSize: 11,
-    color: Colors.muted,
-  },
-  streakPips: {
-    flexDirection: 'row',
-    gap: 5,
-  },
-  streakPip: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  streakCorrect: { fontFamily: 'DMMonoMedium', fontSize: 13, color: Colors.textPrimary },
+  streakInARow: { fontFamily: 'DMSans', fontSize: 11, color: Colors.muted },
+  streakPips: { flexDirection: 'row', gap: 5 },
+  streakPip: { width: 8, height: 8, borderRadius: 4 },
 });
