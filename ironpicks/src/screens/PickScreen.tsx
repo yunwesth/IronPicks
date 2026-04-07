@@ -30,37 +30,19 @@ export default function PickScreen() {
   const [phase, setPhase] = useState<Phase>('picking');
   const [liveHomeScore, setLiveHomeScore] = useState(GAME.homeScore);
 
-  // Capture selection + wager at lock-in time so effects never read stale state
+  // Capture selection + wager at lock-in time
   const lockedRef = useRef<{ selection: PickOption; wager: number } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pulsing animation for the resolving phase
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Drive locked → resolving → resolved transitions
+  // Cleanup timers on unmount
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-
-    if (phase === 'locked') {
-      timer = setTimeout(() => setPhase('resolving'), 1500);
-    } else if (phase === 'resolving') {
-      timer = setTimeout(() => {
-        const { selection, wager: lockedWager } = lockedRef.current!;
-        const isCorrect = selection === 'scores';
-        if (isCorrect) {
-          setBalance((b) => b + lockedWager * ACTIVE_QUESTION.multiplier);
-          setStreakCount((s) => s + 1);
-          setLiveHomeScore((s) => s + 1);
-        } else {
-          setBalance((b) => Math.max(0, b - lockedWager));
-          setStreakCount(0);
-        }
-        setResult(isCorrect ? 'correct' : 'incorrect');
-        setPhase('resolved');
-      }, 2000);
-    }
-
-    return () => clearTimeout(timer);
-  }, [phase]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Pulse animation while resolving
   useEffect(() => {
@@ -79,8 +61,32 @@ export default function PickScreen() {
   }, [phase]);
 
   const handleLockIn = () => {
-    lockedRef.current = { selection: selected, wager };
+    // Capture values now — not from closure later
+    const sel = selected;
+    const w = wager;
+    lockedRef.current = { selection: sel, wager: w };
+
     setPhase('locked');
+
+    // locked → resolving after 1.5s
+    timerRef.current = setTimeout(() => {
+      setPhase('resolving');
+
+      // resolving → resolved after 2.5s
+      timerRef.current = setTimeout(() => {
+        const isCorrect = sel === 'scores';
+        if (isCorrect) {
+          setBalance((b) => b + w * ACTIVE_QUESTION.multiplier);
+          setStreakCount((s) => s + 1);
+          setLiveHomeScore((s) => s + 1);
+        } else {
+          setBalance((b) => Math.max(0, b - w));
+          setStreakCount(0);
+        }
+        setResult(isCorrect ? 'correct' : 'incorrect');
+        setPhase('resolved');
+      }, 2500);
+    }, 1500);
   };
 
   const handleNextPick = () => {
