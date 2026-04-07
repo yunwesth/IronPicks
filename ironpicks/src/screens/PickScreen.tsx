@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { ACTIVE_QUESTION, STREAK, WALLET } from '../constants/mockData';
+import { ACTIVE_QUESTION, STREAK, WALLET, GAME } from '../constants/mockData';
 import Scoreboard from '../components/Scoreboard';
 import BIcon from '../components/icons/BIcon';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
@@ -18,6 +19,7 @@ import FlameIcon from '../components/icons/FlameIcon';
 
 type PickOption = 'scores' | 'holds' | null;
 type ResultState = 'correct' | 'incorrect' | null;
+type Phase = 'picking' | 'locked' | 'resolving' | 'resolved';
 
 export default function PickScreen() {
   const [selected, setSelected] = useState<PickOption>(null);
@@ -25,24 +27,56 @@ export default function PickScreen() {
   const [result, setResult] = useState<ResultState>(null);
   const [streakCount, setStreakCount] = useState(STREAK.correct);
   const [balance, setBalance] = useState(WALLET.balance);
+  const [phase, setPhase] = useState<Phase>('picking');
+  const [liveHomeScore, setLiveHomeScore] = useState(GAME.homeScore);
+
+  // Pulsing animation for the resolving phase
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (phase === 'resolving') {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [phase]);
 
   const handleLockIn = () => {
-    // Simulate result — correct if 'scores' picked
-    const isCorrect = selected === 'scores';
-    setResult(isCorrect ? 'correct' : 'incorrect');
-    if (isCorrect) {
-      setBalance((b) => b + wager * ACTIVE_QUESTION.multiplier);
-      setStreakCount((s) => s + 1);
-    } else {
-      setBalance((b) => Math.max(0, b - wager));
-      setStreakCount(0);
-    }
+    setPhase('locked');
+
+    // After 1.5s → move to resolving (watching the play)
+    setTimeout(() => {
+      setPhase('resolving');
+
+      // After 2s more → reveal result + update live score
+      setTimeout(() => {
+        const isCorrect = selected === 'scores';
+        setResult(isCorrect ? 'correct' : 'incorrect');
+        if (isCorrect) {
+          setBalance((b) => b + wager * ACTIVE_QUESTION.multiplier);
+          setStreakCount((s) => s + 1);
+          setLiveHomeScore((s) => s + 1);
+        } else {
+          setBalance((b) => Math.max(0, b - wager));
+          setStreakCount(0);
+        }
+        setPhase('resolved');
+      }, 2000);
+    }, 1500);
   };
 
   const handleNextPick = () => {
     setSelected(null);
     setResult(null);
     setWager(50);
+    setPhase('picking');
   };
 
   const adjustWager = (delta: number) => {
@@ -77,125 +111,189 @@ export default function PickScreen() {
     </View>
   );
 
-  const renderChallenge = () => {
-    if (result !== null) {
-      const isCorrect = result === 'correct';
-      return (
-        <View style={styles.resultCard}>
-          <Text style={[styles.resultLabel, { color: isCorrect ? Colors.green : Colors.red }]}>
-            {isCorrect ? 'CORRECT' : 'INCORRECT'}
-          </Text>
+  const renderPickingCard = () => (
+    <View style={styles.challengeCard}>
+      {/* Card header */}
+      <View style={styles.challengeHeader}>
+        <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
+        <View style={styles.streakBadge}>
+          <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
+        </View>
+      </View>
+
+      {/* Question */}
+      <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
+
+      {/* Options */}
+      <View style={styles.optionsGrid}>
+        <TouchableOpacity
+          style={[
+            styles.optionButton,
+            selected === 'scores' && styles.optionButtonGreen,
+          ]}
+          onPress={() => setSelected('scores')}
+          activeOpacity={0.8}
+        >
+          <CheckCircleIcon
+            size={20}
+            color={selected === 'scores' ? Colors.green : Colors.muted}
+          />
           <Text
             style={[
-              styles.resultPoints,
-              { color: isCorrect ? Colors.green : Colors.red },
+              styles.optionLabel,
+              selected === 'scores' && styles.optionLabelGreen,
             ]}
           >
-            {isCorrect ? `+${wager * ACTIVE_QUESTION.multiplier} BB` : `-${wager} BB`}
+            Scores
           </Text>
-          <Text style={styles.resultDescription}>
-            {isCorrect
-              ? 'Alcantara drove in the run — streak continues!'
-              : 'Alcantara was retired — better luck next at-bat.'}
-          </Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNextPick}>
-            <Text style={styles.nextButtonText}>Next pick</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+        </TouchableOpacity>
 
-    return (
-      <View style={styles.challengeCard}>
-        {/* Card header */}
-        <View style={styles.challengeHeader}>
-          <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
-          </View>
-        </View>
-
-        {/* Question */}
-        <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
-
-        {/* Options */}
-        <View style={styles.optionsGrid}>
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'scores' && styles.optionButtonGreen,
-            ]}
-            onPress={() => setSelected('scores')}
-            activeOpacity={0.8}
-          >
-            <CheckCircleIcon
-              size={20}
-              color={selected === 'scores' ? Colors.green : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'scores' && styles.optionLabelGreen,
-              ]}
-            >
-              Scores
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'holds' && styles.optionButtonRed,
-            ]}
-            onPress={() => setSelected('holds')}
-            activeOpacity={0.8}
-          >
-            <XCircleIcon
-              size={20}
-              color={selected === 'holds' ? Colors.red : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'holds' && styles.optionLabelRed,
-              ]}
-            >
-              Holds
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Wager row */}
-        <View style={styles.wagerRow}>
-          <Text style={styles.wagerLabel}>Wager</Text>
-          <View style={styles.wagerControls}>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(-10)}
-            >
-              <Text style={styles.wagerBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.wagerAmount}>{wager} BB</Text>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(10)}
-            >
-              <Text style={styles.wagerBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Lock in button */}
         <TouchableOpacity
-          style={[styles.lockInBtn, !selected && styles.lockInBtnDisabled]}
-          onPress={handleLockIn}
-          disabled={!selected}
-          activeOpacity={0.85}
+          style={[
+            styles.optionButton,
+            selected === 'holds' && styles.optionButtonRed,
+          ]}
+          onPress={() => setSelected('holds')}
+          activeOpacity={0.8}
         >
-          <Text style={styles.lockInBtnText}>Lock In Pick</Text>
+          <XCircleIcon
+            size={20}
+            color={selected === 'holds' ? Colors.red : Colors.muted}
+          />
+          <Text
+            style={[
+              styles.optionLabel,
+              selected === 'holds' && styles.optionLabelRed,
+            ]}
+          >
+            Holds
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Wager row */}
+      <View style={styles.wagerRow}>
+        <Text style={styles.wagerLabel}>Wager</Text>
+        <View style={styles.wagerControls}>
+          <TouchableOpacity
+            style={styles.wagerBtn}
+            onPress={() => adjustWager(-10)}
+          >
+            <Text style={styles.wagerBtnText}>−</Text>
+          </TouchableOpacity>
+          <Text style={styles.wagerAmount}>{wager} BB</Text>
+          <TouchableOpacity
+            style={styles.wagerBtn}
+            onPress={() => adjustWager(10)}
+          >
+            <Text style={styles.wagerBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Lock in button */}
+      <TouchableOpacity
+        style={[styles.lockInBtn, !selected && styles.lockInBtnDisabled]}
+        onPress={handleLockIn}
+        disabled={!selected}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.lockInBtnText}>Lock In Pick</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLockedCard = () => (
+    <View style={styles.challengeCard}>
+      <View style={styles.challengeHeader}>
+        <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
+        <View style={styles.streakBadge}>
+          <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
+        </View>
+      </View>
+
+      <View style={styles.lockedBody}>
+        <View style={styles.lockedIconRow}>
+          <CheckCircleIcon size={28} color={Colors.green} />
+          <Text style={styles.lockedTitle}>Pick Locked In!</Text>
+        </View>
+
+        <View style={[
+          styles.lockedPickBadge,
+          selected === 'scores' ? styles.lockedPickBadgeGreen : styles.lockedPickBadgeRed,
+        ]}>
+          <Text style={[
+            styles.lockedPickBadgeText,
+            selected === 'scores' ? { color: Colors.green } : { color: Colors.red },
+          ]}>
+            {selected === 'scores' ? 'YES — Scores' : 'NO — Holds'}
+          </Text>
+        </View>
+
+        <Text style={styles.lockedWagerText}>{wager} BB wagered · {ACTIVE_QUESTION.multiplier}× payout</Text>
+
+        <View style={styles.waitingRow}>
+          <View style={styles.waitingDot} />
+          <Text style={styles.waitingText}>Waiting for the play...</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderResolvingCard = () => (
+    <View style={styles.challengeCard}>
+      <View style={[styles.challengeHeader, styles.challengeHeaderLive]}>
+        <View style={styles.liveRow}>
+          <Animated.View style={[styles.livePulseDot, { opacity: pulseAnim }]} />
+          <Text style={styles.liveLabel}>LIVE</Text>
+        </View>
+        <Text style={styles.challengeHeaderLabel}>PLAY IN PROGRESS</Text>
+      </View>
+
+      <View style={styles.resolvingBody}>
+        <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
+        <View style={styles.watchingRow}>
+          <Animated.View style={[styles.watchingDot, { opacity: pulseAnim }]} />
+          <Text style={styles.watchingText}>Watching the at-bat...</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderResultCard = () => {
+    const isCorrect = result === 'correct';
+    return (
+      <View style={styles.resultCard}>
+        <Text style={[styles.resultLabel, { color: isCorrect ? Colors.green : Colors.red }]}>
+          {isCorrect ? 'CORRECT' : 'INCORRECT'}
+        </Text>
+        <Text
+          style={[
+            styles.resultPoints,
+            { color: isCorrect ? Colors.green : Colors.red },
+          ]}
+        >
+          {isCorrect ? `+${wager * ACTIVE_QUESTION.multiplier} BB` : `-${wager} BB`}
+        </Text>
+        <Text style={styles.resultDescription}>
+          {isCorrect
+            ? 'Alcantara drove in the run — streak continues!'
+            : 'Alcantara was retired — better luck next at-bat.'}
+        </Text>
+        <TouchableOpacity style={styles.nextButton} onPress={handleNextPick}>
+          <Text style={styles.nextButtonText}>Next pick</Text>
         </TouchableOpacity>
       </View>
     );
+  };
+
+  const renderChallenge = () => {
+    switch (phase) {
+      case 'picking':   return renderPickingCard();
+      case 'locked':    return renderLockedCard();
+      case 'resolving': return renderResolvingCard();
+      case 'resolved':  return renderResultCard();
+    }
   };
 
   const renderStreakBar = () => (
@@ -226,7 +324,7 @@ export default function PickScreen() {
       >
         {renderHeader()}
         <View style={styles.gap8} />
-        <Scoreboard />
+        <Scoreboard homeScore={liveHomeScore} />
         {renderDivider()}
         {renderChallenge()}
         {renderStreakBar()}
@@ -319,7 +417,7 @@ const styles = StyleSheet.create({
     color: Colors.maroon,
     letterSpacing: 1,
   },
-  // Challenge card
+  // Challenge card (shared shell)
   challengeCard: {
     backgroundColor: Colors.card,
     borderWidth: 0.5,
@@ -336,6 +434,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.border,
+  },
+  challengeHeaderLive: {
+    backgroundColor: '#0D1F12',
   },
   challengeHeaderLabel: {
     fontFamily: 'DMMonoMedium',
@@ -466,6 +567,106 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#F5EBED',
     letterSpacing: 0.5,
+  },
+  // Locked phase card
+  lockedBody: {
+    paddingHorizontal: 14,
+    paddingTop: 18,
+    paddingBottom: 20,
+    alignItems: 'center',
+    gap: 12,
+  },
+  lockedIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  lockedTitle: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 22,
+    color: Colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  lockedPickBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  lockedPickBadgeGreen: {
+    backgroundColor: Colors.greenBg,
+    borderColor: Colors.green,
+  },
+  lockedPickBadgeRed: {
+    backgroundColor: Colors.redBg,
+    borderColor: Colors.red,
+  },
+  lockedPickBadgeText: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 16,
+    letterSpacing: 0.3,
+  },
+  lockedWagerText: {
+    fontFamily: 'DMMonoMedium',
+    fontSize: 11,
+    color: Colors.muted,
+    letterSpacing: 0.3,
+  },
+  waitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  waitingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.muted,
+  },
+  waitingText: {
+    fontFamily: 'DMSans',
+    fontSize: 12,
+    color: Colors.muted,
+  },
+  // Resolving phase card
+  liveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.scoreboardLiveDot,
+  },
+  liveLabel: {
+    fontFamily: 'DMMonoMedium',
+    fontSize: 9,
+    color: Colors.scoreboardLiveDot,
+    letterSpacing: 0.5,
+  },
+  resolvingBody: {
+    paddingBottom: 18,
+  },
+  watchingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 4,
+  },
+  watchingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.maroon,
+  },
+  watchingText: {
+    fontFamily: 'DMSans',
+    fontSize: 12,
+    color: Colors.muted,
   },
   // Result card
   resultCard: {

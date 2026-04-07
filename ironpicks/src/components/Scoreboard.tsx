@@ -6,7 +6,15 @@ import ArrowDownIcon from './icons/ArrowDownIcon';
 import BasesIcon from './icons/BasesIcon';
 import ClockIcon from './icons/ClockIcon';
 
-export default function Scoreboard() {
+interface ScoreboardProps {
+  homeScore?: number;
+  awayScore?: number;
+}
+
+export default function Scoreboard({ homeScore, awayScore }: ScoreboardProps = {}) {
+  const displayHomeScore = homeScore ?? GAME.homeScore;
+  const displayAwayScore = awayScore ?? GAME.awayScore;
+
   return (
     <View style={styles.card}>
       {/* Maroon header band */}
@@ -23,7 +31,7 @@ export default function Scoreboard() {
         {/* Away */}
         <View style={styles.awayCol}>
           <Text style={styles.teamLabel}>{GAME.awayTeam}</Text>
-          <Text style={styles.scoreDim}>{GAME.awayScore}</Text>
+          <Text style={styles.scoreDim}>{displayAwayScore}</Text>
         </View>
 
         {/* Separator */}
@@ -34,7 +42,7 @@ export default function Scoreboard() {
         {/* Home */}
         <View style={styles.homeCol}>
           <Text style={styles.teamLabel}>{GAME.homeTeam}</Text>
-          <Text style={styles.scoreBright}>{GAME.homeScore}</Text>
+          <Text style={styles.scoreBright}>{displayHomeScore}</Text>
         </View>
       </View>
 
