@@ -1,7 +1,7 @@
 # IronPicks — App Development Budget
 
 **App:** IronPicks — Fan Pick'em Game for the Lehigh Valley IronPigs  
-**Platform:** iOS + Android (React Native / Expo)  
+**Platform:** Web app (Expo Web — runs in any browser, no app stores)  
 **Current Status:** ~60% complete (UI done, backend not yet integrated)  
 **Date:** April 2026
 
@@ -9,88 +9,74 @@
 
 ## Summary
 
-| Category | Low Estimate | High Estimate |
+| Category | Low | High |
 |---|---|---|
-| Development (remaining work) | $26,400 | $38,400 |
-| App Store & Distribution | $224 | $224 |
-| Infrastructure — Year 1 | $480 | $960 |
-| Legal & Compliance | $500 | $1,500 |
-| Design Refinements | $0 | $1,500 |
-| Contingency (10%) | $2,760 | $4,260 |
-| **Total (Launch)** | **$30,364** | **$46,844** |
-| Ongoing Monthly (post-launch) | $50 | $90 |
+| Development (remaining work) | $13,500 | $19,800 |
+| Infrastructure — Year 1 | $312 | $612 |
+| Legal & Compliance | $200 | $800 |
+| Contingency (10%) | $1,400 | $2,120 |
+| **Total (Launch)** | **$15,412** | **$23,332** |
+| Ongoing Monthly (post-launch) | $25 | $50 |
+
+> **Webapp vs. mobile savings:** No App Store or Play Store fees, no native build pipeline (EAS), no device-specific QA, and Vercel hosts the frontend for free. This cuts ~$10–15k from the mobile estimate.
 
 ---
 
 ## Development Costs (Remaining Work)
 
-The app UI is complete. The remaining work is backend integration, live data, and launch prep.
+The UI is complete. The remaining work is backend integration, web compatibility, and deployment.
 
-**Rate assumptions:** React Native / backend developer at $120/hr; QA at $80/hr.
+**Rate assumptions:** Mid-level full-stack developer at $90/hr; QA at $70/hr.
 
 ### Phase 1 — Core Backend Integration
 
 | Task | Hours | Cost |
 |---|---|---|
-| Supabase Auth (magic link, session mgmt, user profiles) | 25 | $3,000 |
-| Wire PickScreen to Supabase Realtime (live questions, lock/resolve) | 35 | $4,200 |
-| Edge Function: `resolve-pick` (validate outcome, update wallet + streak) | 20 | $2,400 |
-| Edge Function: `sync-game-state` (poll MLB API every 30s, push via Realtime) | 20 | $2,400 |
-| Edge Function: `redeem-reward` (validate BB balance, mark redemption) | 15 | $1,800 |
-| MLB Stats API live integration (schedule + game feed replacing mock data) | 25 | $3,000 |
-| **Phase 1 Subtotal** | **140** | **$16,800** |
+| Supabase Auth (magic link sign-in, session management, user profiles) | 18 | $1,620 |
+| Wire PickScreen to Supabase Realtime (live questions, lock/resolve flow) | 28 | $2,520 |
+| Edge Function: `resolve-pick` (validate outcome, update wallet + streak) | 18 | $1,620 |
+| Edge Function: `sync-game-state` (poll MLB API every 30s, push via Realtime) | 18 | $1,620 |
+| Edge Function: `redeem-reward` (validate BB balance, mark redemption) | 12 | $1,080 |
+| MLB Stats API live integration (replace mock data with real schedule + feed) | 18 | $1,620 |
+| **Phase 1 Subtotal** | **112** | **$10,080** |
 
-### Phase 2 — Operational Features
-
-| Task | Hours | Cost |
-|---|---|---|
-| Staff QR verification (web or native view to scan/validate redemptions) | 20 | $2,400 |
-| Push notifications (game start, pick result, streak milestones via Expo Push) | 20 | $2,400 |
-| Analytics event tracking (Mixpanel or PostHog — key funnels + retention) | 12 | $1,440 |
-| **Phase 2 Subtotal** | **52** | **$6,240** |
-
-### Phase 3 — Testing, Hardening & Launch
+### Phase 2 — Web Adaptation & Operational Features
 
 | Task | Hours | Cost |
 |---|---|---|
-| QA: functional testing on iOS + Android devices | 20 | $1,600 |
-| QA: edge cases (network drops, wrong pick timing, empty wallet, stale game data) | 15 | $1,200 |
-| Bug fixes from QA pass | 20 | $2,400 |
-| CI/CD setup (GitHub Actions + Expo EAS Build pipelines) | 12 | $1,440 |
-| App Store & Play Store submission prep (screenshots, descriptions, privacy URL) | 12 | $1,440 |
-| **Phase 3 Subtotal** | **79** | **$8,080** |
+| Expo Web compatibility fixes (swap any native-only components for web equivalents) | 12 | $1,080 |
+| Staff QR verification page (simple web page to scan + validate redemption codes) | 10 | $900 |
+| Browser push notifications (Web Push API for game start + pick result alerts) | 8 | $720 |
+| **Phase 2 Subtotal** | **30** | **$2,700** |
+
+### Phase 3 — Testing & Launch
+
+| Task | Hours | Cost |
+|---|---|---|
+| QA: functional testing across Chrome, Safari, Firefox (desktop + mobile browser) | 12 | $840 |
+| QA: edge cases (network drops, wrong pick timing, empty wallet, stale data) | 8 | $560 |
+| Bug fixes from QA pass | 12 | $1,080 |
+| Vercel deployment + custom domain setup + CI auto-deploy from GitHub | 4 | $360 |
+| **Phase 3 Subtotal** | **36** | **$2,840** |
 
 ### Contingency
 
-10% buffer for scope creep, Apple review feedback, and unexpected integration complexity: **$3,112–$3,812**
-
----
-
-## App Store & Distribution
-
-| Item | Cost | Frequency |
-|---|---|---|
-| Apple Developer Program | $99 | Annual |
-| Google Play Developer Account | $25 | One-time |
-| **Subtotal** | **$124 + $99/yr** | |
+10% buffer for scope creep and unexpected integration complexity: **$1,562–$1,962**
 
 ---
 
 ## Infrastructure & Hosting (Year 1)
 
-All costs are recurring. The free tiers are sufficient for early testing; production traffic during games warrants paid plans.
-
 | Service | Plan | Monthly | Annual |
 |---|---|---|---|
 | Supabase (database, auth, realtime, edge functions) | Pro ($25/mo) | $25 | $300 |
-| Expo EAS Build (iOS + Android native builds) | Free (30 builds/mo each) or On-demand ($29/mo) | $0–$29 | $0–$348 |
-| Push Notifications | Expo Push (free tier) | $0 | $0 |
-| Analytics | Mixpanel or PostHog (free tier — 1M events/mo) | $0 | $0 |
-| Staff verification web host (Vercel or Netlify) | Hobby (free) | $0 | $0 |
-| Custom domain (optional) | — | ~$1.50 | $18 |
-| **Subtotal** | | **$25–$55** | **$318–$666** |
+| Vercel (web hosting + CDN) | Hobby (free) | $0 | $0 |
+| Browser Push Notifications | Web Push API (free, browser-native) | $0 | $0 |
+| Analytics | PostHog free tier (1M events/mo) | $0 | $0 |
+| Custom domain | — | ~$1 | $12 |
+| **Subtotal** | | **$26–$51** | **$312–$612** |
 
-> **Supabase Free tier caveat:** Free allows 500 concurrent Realtime connections and 500MB DB. For a minor-league team with 200–500 concurrent users per game, the Pro plan at $25/month is recommended from day one to avoid connection limits.
+> **Supabase note:** The free tier supports 500 concurrent Realtime connections. For a minor-league fanbase with ~100–300 concurrent users per game, free may be enough to start. Pro at $25/month is recommended for production stability.
 
 ---
 
@@ -98,19 +84,9 @@ All costs are recurring. The free tiers are sufficient for early testing; produc
 
 | Item | Low | High |
 |---|---|---|
-| Privacy Policy & Terms of Service (template-based or attorney-drafted) | $200 | $1,000 |
-| COPPA / age-gating review (if app may reach under-13 users) | $300 | $500 |
-| **Subtotal** | **$500** | **$1,500** |
-
----
-
-## Design Refinements (Optional)
-
-The current design system is complete. Budget this only if the IronPigs marketing team requests brand alignment changes.
-
-| Item | Low | High |
-|---|---|---|
-| Spot design work (icon refinements, loading states, onboarding screens) | $0 | $1,500 |
+| Privacy Policy & Terms of Service (template via Termly or similar) | $0 | $200 |
+| Attorney review (optional, if IronPigs org requires it) | $200 | $600 |
+| **Subtotal** | **$200** | **$800** |
 
 ---
 
@@ -119,10 +95,11 @@ The current design system is complete. Budget this only if the IronPigs marketin
 | Item | Monthly |
 |---|---|
 | Supabase Pro | $25 |
-| Apple Developer (amortized) | $8.25 |
-| Expo EAS (if needed for updates) | $0–$29 |
-| Analytics (free tier) | $0 |
-| **Monthly Run Rate** | **$33–$62** |
+| Vercel (free tier is sufficient) | $0 |
+| Push notifications | $0 |
+| Analytics | $0 |
+| Domain | ~$1 |
+| **Monthly Run Rate** | **~$26** |
 
 ---
 
@@ -130,18 +107,18 @@ The current design system is complete. Budget this only if the IronPigs marketin
 
 | Phase | Duration | Milestone |
 |---|---|---|
-| Phase 1 — Backend Integration | 5–7 weeks | Live game data + authenticated picks working |
-| Phase 2 — Operational Features | 2–3 weeks | Staff redemption flow + push notifications |
-| Phase 3 — Launch Prep | 2–3 weeks | App Store approved and live |
-| **Total to Launch** | **9–13 weeks** | |
+| Phase 1 — Backend Integration | 4–6 weeks | Live picks + authenticated users working |
+| Phase 2 — Web Adaptation & Features | 1–2 weeks | Runs cleanly in browser; staff redemption flow live |
+| Phase 3 — Testing & Launch | 1–2 weeks | Deployed to production URL |
+| **Total to Launch** | **6–10 weeks** | |
 
-> Apple's App Store review typically adds 1–7 days; plan for one revision cycle.
+> No App Store review delay. Deploy when ready.
 
 ---
 
 ## Cost Driver Notes
 
-- **Biggest cost:** Supabase Realtime + Edge Function integration (Phase 1 is 52% of dev budget). The live pick-resolution pipeline — where a pick must lock before the at-bat resolves and the wallet must update atomically — is the most technically complex piece.
-- **MLB Stats API is free** with no rate limits for standard polling, eliminating a major data cost.
-- **Expo EAS** handles iOS and Android builds without managing Xcode/Gradle servers, keeping DevOps lean.
-- **Scaling:** Supabase Pro scales automatically up to $0.013/active user beyond included limits. For a minor-league fanbase, costs are unlikely to exceed $50/month in the first season.
+- **Biggest cost driver:** The real-time pick pipeline in Phase 1 (pick locks atomically before the at-bat resolves, wallet updates server-side). This is unavoidable for a fair game.
+- **MLB Stats API is free** — no licensing cost.
+- **Expo Web** reuses ~90% of the existing code. The main compatibility work is swapping `react-native-qrcode-svg` for a web QR library and verifying navigation works in a browser.
+- **No App Store, no EAS Build, no native SDKs** — these were the biggest cost drivers in the mobile budget.
