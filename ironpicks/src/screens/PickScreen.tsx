@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,32 +6,69 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { ACTIVE_QUESTION, STREAK, WALLET } from '../constants/mockData';
+import { QUESTIONS_POOL, STREAK, WALLET } from '../constants/mockData';
 import Scoreboard from '../components/Scoreboard';
 import BIcon from '../components/icons/BIcon';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import XCircleIcon from '../components/icons/XCircleIcon';
 import FlameIcon from '../components/icons/FlameIcon';
+import ClockIcon from '../components/icons/ClockIcon';
 
-type PickOption = 'scores' | 'holds' | null;
 type ResultState = 'correct' | 'incorrect' | null;
 
+// Random delay between 6 and 15 seconds (simulating natural at-bat timing)
+function randomDelay(): number {
+  return Math.floor(Math.random() * 9000) + 6000;
+}
+
 export default function PickScreen() {
-  const [selected, setSelected] = useState<PickOption>(null);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
   const [wager, setWager] = useState(50);
   const [result, setResult] = useState<ResultState>(null);
   const [streakCount, setStreakCount] = useState(STREAK.correct);
   const [balance, setBalance] = useState(WALLET.balance);
+  const [waitingForNext, setWaitingForNext] = useState(false);
+  const [waitCountdown, setWaitCountdown] = useState(0);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const question = QUESTIONS_POOL[questionIndex % QUESTIONS_POOL.length];
+
+  // Pulse animation for the waiting indicator
+  useEffect(() => {
+    if (waitingForNext) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+  }, [waitingForNext]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const handleLockIn = () => {
-    // Simulate result — correct if 'scores' picked
-    const isCorrect = selected === 'scores';
+    const isCorrect = selected === question.correctOption;
     setResult(isCorrect ? 'correct' : 'incorrect');
     if (isCorrect) {
-      setBalance((b) => b + wager * ACTIVE_QUESTION.multiplier);
+      setBalance((b) => b + wager * question.multiplier);
       setStreakCount((s) => s + 1);
     } else {
       setBalance((b) => Math.max(0, b - wager));
@@ -43,6 +80,28 @@ export default function PickScreen() {
     setSelected(null);
     setResult(null);
     setWager(50);
+    setWaitingForNext(true);
+
+    const delay = randomDelay();
+    const secondsLeft = Math.ceil(delay / 1000);
+    setWaitCountdown(secondsLeft);
+
+    // Countdown ticker
+    countdownRef.current = setInterval(() => {
+      setWaitCountdown((s) => {
+        if (s <= 1) {
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+
+    // Reveal next question after random delay
+    timeoutRef.current = setTimeout(() => {
+      setWaitingForNext(false);
+      setQuestionIndex((i) => i + 1);
+    }, delay);
   };
 
   const adjustWager = (delta: number) => {
@@ -72,12 +131,33 @@ export default function PickScreen() {
   const renderDivider = () => (
     <View style={styles.divider}>
       <View style={styles.hairline} />
-      <Text style={styles.dividerText}>{ACTIVE_QUESTION.label}</Text>
+      <Text style={styles.dividerText}>{question.label}</Text>
       <View style={styles.hairline} />
     </View>
   );
 
+  const renderWaiting = () => (
+    <View style={styles.waitingCard}>
+      <Animated.View style={[styles.waitingIconWrap, { opacity: pulseAnim }]}>
+        <ClockIcon size={32} ringColor={Colors.muted} handColor={Colors.muted} />
+      </Animated.View>
+      <Text style={styles.waitingTitle}>Waiting for next play…</Text>
+      <Text style={styles.waitingSubtitle}>
+        A new challenge will appear after the current at-bat resolves.
+      </Text>
+      {waitCountdown > 0 && (
+        <View style={styles.countdownPill}>
+          <Text style={styles.countdownText}>~{waitCountdown}s</Text>
+        </View>
+      )}
+    </View>
+  );
+
   const renderChallenge = () => {
+    if (waitingForNext) {
+      return renderWaiting();
+    }
+
     if (result !== null) {
       const isCorrect = result === 'correct';
       return (
@@ -91,12 +171,10 @@ export default function PickScreen() {
               { color: isCorrect ? Colors.green : Colors.red },
             ]}
           >
-            {isCorrect ? `+${wager * ACTIVE_QUESTION.multiplier} BB` : `-${wager} BB`}
+            {isCorrect ? `+${wager * question.multiplier} BB` : `-${wager} BB`}
           </Text>
           <Text style={styles.resultDescription}>
-            {isCorrect
-              ? 'Alcantara drove in the run — streak continues!'
-              : 'Alcantara was retired — better luck next at-bat.'}
+            {isCorrect ? question.correctNarrative : question.incorrectNarrative}
           </Text>
           <TouchableOpacity style={styles.nextButton} onPress={handleNextPick}>
             <Text style={styles.nextButtonText}>Next pick</Text>
@@ -111,75 +189,55 @@ export default function PickScreen() {
         <View style={styles.challengeHeader}>
           <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
+            <Text style={styles.streakBadgeText}>{question.multiplier}× STREAK</Text>
           </View>
         </View>
 
         {/* Question */}
-        <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
+        <Text style={styles.questionText}>{question.text}</Text>
 
         {/* Options */}
         <View style={styles.optionsGrid}>
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'scores' && styles.optionButtonGreen,
-            ]}
-            onPress={() => setSelected('scores')}
-            activeOpacity={0.8}
-          >
-            <CheckCircleIcon
-              size={20}
-              color={selected === 'scores' ? Colors.green : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'scores' && styles.optionLabelGreen,
-              ]}
-            >
-              Scores
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'holds' && styles.optionButtonRed,
-            ]}
-            onPress={() => setSelected('holds')}
-            activeOpacity={0.8}
-          >
-            <XCircleIcon
-              size={20}
-              color={selected === 'holds' ? Colors.red : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'holds' && styles.optionLabelRed,
-              ]}
-            >
-              Holds
-            </Text>
-          </TouchableOpacity>
+          {question.options.map((opt, idx) => {
+            const isFirst = idx === 0;
+            const isSelected = selected === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[
+                  styles.optionButton,
+                  isSelected && (isFirst ? styles.optionButtonGreen : styles.optionButtonRed),
+                ]}
+                onPress={() => setSelected(opt.id)}
+                activeOpacity={0.8}
+              >
+                {isFirst ? (
+                  <CheckCircleIcon size={20} color={isSelected ? Colors.green : Colors.muted} />
+                ) : (
+                  <XCircleIcon size={20} color={isSelected ? Colors.red : Colors.muted} />
+                )}
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    isSelected && (isFirst ? styles.optionLabelGreen : styles.optionLabelRed),
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Wager row */}
         <View style={styles.wagerRow}>
           <Text style={styles.wagerLabel}>Wager</Text>
           <View style={styles.wagerControls}>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(-10)}
-            >
+            <TouchableOpacity style={styles.wagerBtn} onPress={() => adjustWager(-10)}>
               <Text style={styles.wagerBtnText}>−</Text>
             </TouchableOpacity>
             <Text style={styles.wagerAmount}>{wager} BB</Text>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(10)}
-            >
+            <TouchableOpacity style={styles.wagerBtn} onPress={() => adjustWager(10)}>
               <Text style={styles.wagerBtnText}>+</Text>
             </TouchableOpacity>
           </View>
@@ -227,7 +285,7 @@ export default function PickScreen() {
         {renderHeader()}
         <View style={styles.gap8} />
         <Scoreboard />
-        {renderDivider()}
+        {!waitingForNext && renderDivider()}
         {renderChallenge()}
         {renderStreakBar()}
         <View style={styles.gap16} />
@@ -318,6 +376,47 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: Colors.maroon,
     letterSpacing: 1,
+  },
+  // Waiting card
+  waitingCard: {
+    backgroundColor: Colors.card,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    marginHorizontal: 12,
+    marginTop: 10,
+    padding: 28,
+    alignItems: 'center',
+    gap: 10,
+  },
+  waitingIconWrap: {
+    marginBottom: 4,
+  },
+  waitingTitle: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 20,
+    color: Colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  waitingSubtitle: {
+    fontFamily: 'DMSans',
+    fontSize: 12,
+    color: Colors.muted,
+    textAlign: 'center',
+    lineHeight: 17,
+    maxWidth: 240,
+  },
+  countdownPill: {
+    marginTop: 4,
+    backgroundColor: Colors.card2,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  countdownText: {
+    fontFamily: 'DMMonoMedium',
+    fontSize: 11,
+    color: Colors.textSecondary,
   },
   // Challenge card
   challengeCard: {

@@ -47,6 +47,70 @@ export const ACTIVE_QUESTION = {
   ],
 };
 
+export type Question = {
+  id: string;
+  text: string;
+  multiplier: number;
+  label: string;
+  options: { id: string; label: string }[];
+  correctOption: string;
+  correctNarrative: string;
+  incorrectNarrative: string;
+};
+
+export const QUESTIONS_POOL: Question[] = [
+  {
+    id: 'q1',
+    text: 'Will Alcantara drive in a run this at-bat?',
+    multiplier: 2,
+    label: 'CRITICAL MOMENT · RISP',
+    options: [{ id: 'scores', label: 'Scores' }, { id: 'holds', label: 'Holds' }],
+    correctOption: 'scores',
+    correctNarrative: 'Alcantara drove in the run — streak continues!',
+    incorrectNarrative: 'Alcantara was retired — better luck next at-bat.',
+  },
+  {
+    id: 'q2',
+    text: 'Will De La Cruz reach base this plate appearance?',
+    multiplier: 1,
+    label: 'LEADOFF · TOP 7',
+    options: [{ id: 'reaches', label: 'Reaches' }, { id: 'out', label: 'Out' }],
+    correctOption: 'reaches',
+    correctNarrative: 'De La Cruz draws a walk to open the inning!',
+    incorrectNarrative: 'De La Cruz flies out to right — inning gets tough.',
+  },
+  {
+    id: 'q3',
+    text: 'Will Spence record a strikeout this at-bat?',
+    multiplier: 1,
+    label: 'PITCHING · FULL COUNT',
+    options: [{ id: 'k', label: 'Strikeout' }, { id: 'no_k', label: 'No K' }],
+    correctOption: 'k',
+    correctNarrative: 'Spence punches him out — filthy slider!',
+    incorrectNarrative: 'Estrada works a walk on the full count.',
+  },
+  {
+    id: 'q4',
+    text: 'Will Romero score from second on this hit?',
+    multiplier: 3,
+    label: 'HIGH STAKES · 2 OUTS',
+    options: [{ id: 'scores', label: 'Scores' }, { id: 'holds', label: 'Holds' }],
+    correctOption: 'scores',
+    correctNarrative: 'Romero scores easily — that seals it!',
+    incorrectNarrative: 'Romero held at third — close play at the plate.',
+  },
+  {
+    id: 'q5',
+    text: 'Will Tovar hit this ball into the outfield?',
+    multiplier: 1,
+    label: 'CONTACT PLAY · 1ST & 2ND',
+    options: [{ id: 'outfield', label: 'Outfield' }, { id: 'infield', label: 'Infield' }],
+    correctOption: 'outfield',
+    correctNarrative: 'Tovar lines one into left-center — runners moving!',
+    incorrectNarrative: 'Tovar bounces one to short — double play ball.',
+  },
+];
+
 export const PLAY_BY_PLAY = [
   {
     id: '1',

@@ -17,11 +17,13 @@ import {
 } from '@expo-google-fonts/dm-sans';
 
 import { Colors } from './src/constants/colors';
+import HomeScreen from './src/screens/HomeScreen';
 import PickScreen from './src/screens/PickScreen';
 import GameScreen from './src/screens/GameScreen';
 import RankScreen from './src/screens/RankScreen';
 import RedeemScreen from './src/screens/RedeemScreen';
 
+import HomeIcon from './src/components/icons/HomeIcon';
 import StarIcon from './src/components/icons/StarIcon';
 import CalendarIcon from './src/components/icons/CalendarIcon';
 import BarChartIcon from './src/components/icons/BarChartIcon';
@@ -59,7 +61,9 @@ export default function App() {
             tabBarItemStyle: styles.tabItem,
             tabBarIcon: ({ color, focused }) => {
               const size = 22;
-              if (route.name === 'Pick') {
+              if (route.name === 'Home') {
+                return <HomeIcon size={size} color={color} />;
+              } else if (route.name === 'Pick') {
                 return <StarIcon size={size} color={color} />;
               } else if (route.name === 'Game') {
                 return <CalendarIcon size={size} color={color} />;
@@ -72,6 +76,7 @@ export default function App() {
             },
           })}
         >
+          <Tab.Screen name="Home" component={HomeScreen} />
           <Tab.Screen name="Pick" component={PickScreen} />
           <Tab.Screen name="Game" component={GameScreen} />
           <Tab.Screen name="Rank" component={RankScreen} />
