@@ -6,7 +6,24 @@ import {
   StyleSheet,
   Platform,
   useWindowDimensions,
+  ScrollView,
 } from 'react-native';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(e: any) { return { error: String(e?.message ?? e) }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 20 }}>
+          <Text style={{ color: 'red', fontWeight: 'bold', fontSize: 16 }}>App Error:</Text>
+          <Text style={{ color: '#333', marginTop: 8, fontSize: 12 }}>{this.state.error}</Text>
+        </ScrollView>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -138,18 +155,22 @@ export default function App() {
 
   if (Platform.OS === 'web') {
     return (
-      <GameProvider>
-        <PhoneFrame>
-          <AppNavigator />
-        </PhoneFrame>
-      </GameProvider>
+      <ErrorBoundary>
+        <GameProvider>
+          <PhoneFrame>
+            <AppNavigator />
+          </PhoneFrame>
+        </GameProvider>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <GameProvider>
-      <AppNavigator />
-    </GameProvider>
+    <ErrorBoundary>
+      <GameProvider>
+        <AppNavigator />
+      </GameProvider>
+    </ErrorBoundary>
   );
 }
 
