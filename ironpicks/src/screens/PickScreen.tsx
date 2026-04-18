@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Modal,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
@@ -18,16 +20,64 @@ import FlameIcon from '../components/icons/FlameIcon';
 
 type PickOption = 'scores' | 'holds' | null;
 type ResultState = 'correct' | 'incorrect' | null;
+type Phase = 'waiting' | 'notification' | 'picking' | 'result';
+
+// First Bacon Moment fires after 8 s (demo-friendly), then every 40–60 s
+const FIRST_DELAY_MS = 8000;
+const REPEAT_MIN_MS = 40000;
+const REPEAT_RANGE_MS = 20000;
 
 export default function PickScreen() {
+  const [phase, setPhase] = useState<Phase>('waiting');
   const [selected, setSelected] = useState<PickOption>(null);
   const [wager, setWager] = useState(50);
   const [result, setResult] = useState<ResultState>(null);
   const [streakCount, setStreakCount] = useState(STREAK.correct);
   const [balance, setBalance] = useState(WALLET.balance);
+  const isFirst = useRef(true);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(80)).current;
+
+  // Schedule next Bacon Moment while in 'waiting' phase
+  useEffect(() => {
+    if (phase !== 'waiting') return;
+    const delay = isFirst.current
+      ? FIRST_DELAY_MS
+      : REPEAT_MIN_MS + Math.random() * REPEAT_RANGE_MS;
+    const t = setTimeout(() => {
+      isFirst.current = false;
+      setPhase('notification');
+    }, delay);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // Auto-return to waiting 4 s after result is shown
+  useEffect(() => {
+    if (phase !== 'result') return;
+    const t = setTimeout(() => {
+      setSelected(null);
+      setResult(null);
+      setWager(50);
+      setPhase('waiting');
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  // Animate notification modal in/out
+  useEffect(() => {
+    if (phase === 'notification') {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, bounciness: 7 }),
+      ]).start();
+    } else {
+      fadeAnim.setValue(0);
+      slideAnim.setValue(80);
+    }
+  }, [phase]);
 
   const handleLockIn = () => {
-    // Simulate result — correct if 'scores' picked
     const isCorrect = selected === 'scores';
     setResult(isCorrect ? 'correct' : 'incorrect');
     if (isCorrect) {
@@ -37,18 +87,14 @@ export default function PickScreen() {
       setBalance((b) => Math.max(0, b - wager));
       setStreakCount(0);
     }
-  };
-
-  const handleNextPick = () => {
-    setSelected(null);
-    setResult(null);
-    setWager(50);
+    setPhase('result');
   };
 
   const adjustWager = (delta: number) => {
     setWager((w) => Math.min(balance, Math.max(10, w + delta)));
   };
 
+  // ── Header ─────────────────────────────────────────────────────────────────
   const renderHeader = () => (
     <View style={styles.headerBar}>
       <View style={styles.headerLeft}>
@@ -69,135 +115,104 @@ export default function PickScreen() {
     </View>
   );
 
-  const renderDivider = () => (
-    <View style={styles.divider}>
-      <View style={styles.hairline} />
-      <Text style={styles.dividerText}>{ACTIVE_QUESTION.label}</Text>
-      <View style={styles.hairline} />
+  // ── Waiting state ──────────────────────────────────────────────────────────
+  const renderWaiting = () => (
+    <View style={styles.waitingCard}>
+      <Text style={styles.baconEmoji}>🥓</Text>
+      <Text style={styles.waitingTitle}>Standing By</Text>
+      <Text style={styles.waitingBody}>
+        A Bacon Moment will appear when the next critical play is coming up.
+        Stay ready!
+      </Text>
+      <View style={styles.waitingPulse}>
+        <View style={styles.waitingDot} />
+        <Text style={styles.waitingDotLabel}>Watching live game…</Text>
+      </View>
     </View>
   );
 
-  const renderChallenge = () => {
-    if (result !== null) {
-      const isCorrect = result === 'correct';
-      return (
-        <View style={styles.resultCard}>
-          <Text style={[styles.resultLabel, { color: isCorrect ? Colors.green : Colors.red }]}>
-            {isCorrect ? 'CORRECT' : 'INCORRECT'}
-          </Text>
-          <Text
-            style={[
-              styles.resultPoints,
-              { color: isCorrect ? Colors.green : Colors.red },
-            ]}
-          >
-            {isCorrect ? `+${wager * ACTIVE_QUESTION.multiplier} BB` : `-${wager} BB`}
-          </Text>
-          <Text style={styles.resultDescription}>
-            {isCorrect
-              ? 'Alcantara drove in the run — streak continues!'
-              : 'Alcantara was retired — better luck next at-bat.'}
-          </Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNextPick}>
-            <Text style={styles.nextButtonText}>Next pick</Text>
-          </TouchableOpacity>
+  // ── Pick UI ────────────────────────────────────────────────────────────────
+  const renderPicking = () => (
+    <View style={styles.challengeCard}>
+      <View style={styles.challengeHeader}>
+        <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
+        <View style={styles.streakBadge}>
+          <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
         </View>
-      );
-    }
+      </View>
 
-    return (
-      <View style={styles.challengeCard}>
-        {/* Card header */}
-        <View style={styles.challengeHeader}>
-          <Text style={styles.challengeHeaderLabel}>IRONPICKS CHALLENGE</Text>
-          <View style={styles.streakBadge}>
-            <Text style={styles.streakBadgeText}>{ACTIVE_QUESTION.multiplier}× STREAK</Text>
-          </View>
-        </View>
+      <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
 
-        {/* Question */}
-        <Text style={styles.questionText}>{ACTIVE_QUESTION.text}</Text>
-
-        {/* Options */}
-        <View style={styles.optionsGrid}>
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'scores' && styles.optionButtonGreen,
-            ]}
-            onPress={() => setSelected('scores')}
-            activeOpacity={0.8}
-          >
-            <CheckCircleIcon
-              size={20}
-              color={selected === 'scores' ? Colors.green : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'scores' && styles.optionLabelGreen,
-              ]}
-            >
-              Scores
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.optionButton,
-              selected === 'holds' && styles.optionButtonRed,
-            ]}
-            onPress={() => setSelected('holds')}
-            activeOpacity={0.8}
-          >
-            <XCircleIcon
-              size={20}
-              color={selected === 'holds' ? Colors.red : Colors.muted}
-            />
-            <Text
-              style={[
-                styles.optionLabel,
-                selected === 'holds' && styles.optionLabelRed,
-              ]}
-            >
-              Holds
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Wager row */}
-        <View style={styles.wagerRow}>
-          <Text style={styles.wagerLabel}>Wager</Text>
-          <View style={styles.wagerControls}>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(-10)}
-            >
-              <Text style={styles.wagerBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.wagerAmount}>{wager} BB</Text>
-            <TouchableOpacity
-              style={styles.wagerBtn}
-              onPress={() => adjustWager(10)}
-            >
-              <Text style={styles.wagerBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Lock in button */}
+      <View style={styles.optionsGrid}>
         <TouchableOpacity
-          style={[styles.lockInBtn, !selected && styles.lockInBtnDisabled]}
-          onPress={handleLockIn}
-          disabled={!selected}
-          activeOpacity={0.85}
+          style={[styles.optionButton, selected === 'scores' && styles.optionButtonGreen]}
+          onPress={() => setSelected('scores')}
+          activeOpacity={0.8}
         >
-          <Text style={styles.lockInBtnText}>Lock In Pick</Text>
+          <CheckCircleIcon size={20} color={selected === 'scores' ? Colors.green : Colors.muted} />
+          <Text style={[styles.optionLabel, selected === 'scores' && styles.optionLabelGreen]}>
+            Scores
+          </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.optionButton, selected === 'holds' && styles.optionButtonRed]}
+          onPress={() => setSelected('holds')}
+          activeOpacity={0.8}
+        >
+          <XCircleIcon size={20} color={selected === 'holds' ? Colors.red : Colors.muted} />
+          <Text style={[styles.optionLabel, selected === 'holds' && styles.optionLabelRed]}>
+            Holds
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.wagerRow}>
+        <Text style={styles.wagerLabel}>Wager</Text>
+        <View style={styles.wagerControls}>
+          <TouchableOpacity style={styles.wagerBtn} onPress={() => adjustWager(-10)}>
+            <Text style={styles.wagerBtnText}>−</Text>
+          </TouchableOpacity>
+          <Text style={styles.wagerAmount}>{wager} BB</Text>
+          <TouchableOpacity style={styles.wagerBtn} onPress={() => adjustWager(10)}>
+            <Text style={styles.wagerBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.lockInBtn, !selected && styles.lockInBtnDisabled]}
+        onPress={handleLockIn}
+        disabled={!selected}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.lockInBtnText}>Lock In Pick</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ── Result ─────────────────────────────────────────────────────────────────
+  const renderResult = () => {
+    const isCorrect = result === 'correct';
+    return (
+      <View style={styles.resultCard}>
+        <Text style={[styles.resultLabel, { color: isCorrect ? Colors.green : Colors.red }]}>
+          {isCorrect ? 'CORRECT' : 'INCORRECT'}
+        </Text>
+        <Text style={[styles.resultPoints, { color: isCorrect ? Colors.green : Colors.red }]}>
+          {isCorrect ? `+${wager * ACTIVE_QUESTION.multiplier} BB` : `-${wager} BB`}
+        </Text>
+        <Text style={styles.resultDescription}>
+          {isCorrect
+            ? 'Alcantara drove in the run — streak continues!'
+            : 'Alcantara was retired — better luck next Bacon Moment.'}
+        </Text>
+        <Text style={styles.resultWaiting}>Next Bacon Moment incoming…</Text>
       </View>
     );
   };
 
+  // ── Streak bar ─────────────────────────────────────────────────────────────
   const renderStreakBar = () => (
     <View style={styles.streakBar}>
       <View style={styles.streakLeft}>
@@ -227,27 +242,57 @@ export default function PickScreen() {
         {renderHeader()}
         <View style={styles.gap8} />
         <Scoreboard />
-        {renderDivider()}
-        {renderChallenge()}
+        <View style={styles.gap10} />
+
+        {phase === 'waiting' && renderWaiting()}
+        {phase === 'picking' && renderPicking()}
+        {phase === 'result' && renderResult()}
+
+        <View style={styles.gap10} />
         {renderStreakBar()}
-        <View style={styles.gap16} />
       </ScrollView>
+
+      {/* Bacon Moment bottom-sheet notification */}
+      <Modal visible={phase === 'notification'} transparent animationType="none">
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.overlayBackdrop}
+            activeOpacity={1}
+            onPress={() => setPhase('picking')}
+          />
+          <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.baconTag}>
+              <Text style={styles.baconTagEmoji}>🥓</Text>
+              <Text style={styles.baconTagText}>BACON MOMENT</Text>
+            </View>
+
+            <Text style={styles.sheetTitle}>New Pick Is Live!</Text>
+            <Text style={styles.sheetQuestion}>{ACTIVE_QUESTION.text}</Text>
+            <Text style={styles.sheetMeta}>
+              {ACTIVE_QUESTION.multiplier}× multiplier · {ACTIVE_QUESTION.label}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.sheetCTA}
+              onPress={() => setPhase('picking')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.sheetCTAText}>Make Your Pick</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    gap: 0,
-    paddingBottom: 24,
-  },
+  safe: { flex: 1, backgroundColor: Colors.surface },
+  scroll: { flex: 1 },
+  scrollContent: { gap: 0, paddingBottom: 24 },
+
   // Header
   headerBar: {
     backgroundColor: Colors.card,
@@ -259,18 +304,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logo: {
-    width: 44,
-    height: 44,
-  },
-  headerTextBlock: {
-    gap: 2,
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logo: { width: 44, height: 44 },
+  headerTextBlock: { gap: 2 },
   headerTeamName: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 14,
@@ -294,33 +330,61 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     gap: 5,
   },
-  walletText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 12,
-    color: Colors.navy,
-  },
+  walletText: { fontFamily: 'DMMonoMedium', fontSize: 12, color: Colors.navy },
+
   gap8: { height: 8 },
-  gap16: { height: 16 },
-  // Divider
-  divider: {
+  gap10: { height: 10 },
+
+  // Waiting state
+  waitingCard: {
+    backgroundColor: Colors.card,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    marginHorizontal: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 10,
+  },
+  baconEmoji: { fontSize: 36, marginBottom: 4 },
+  waitingTitle: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 22,
+    color: Colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  waitingBody: {
+    fontFamily: 'DMSans',
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  waitingPulse: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 12,
-    marginVertical: 10,
-    gap: 8,
+    gap: 6,
+    backgroundColor: Colors.card2,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  hairline: {
-    flex: 1,
-    height: 0.5,
-    backgroundColor: Colors.border,
+  waitingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.maroon,
   },
-  dividerText: {
+  waitingDotLabel: {
     fontFamily: 'DMMonoMedium',
     fontSize: 9,
-    color: Colors.maroon,
-    letterSpacing: 1,
+    color: Colors.muted,
+    letterSpacing: 0.4,
   },
-  // Challenge card
+
+  // Challenge card (picking phase)
   challengeCard: {
     backgroundColor: Colors.card,
     borderWidth: 0.5,
@@ -398,12 +462,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.muted,
   },
-  optionLabelGreen: {
-    color: Colors.green,
-  },
-  optionLabelRed: {
-    color: Colors.red,
-  },
+  optionLabelGreen: { color: Colors.green },
+  optionLabelRed: { color: Colors.red },
+
   // Wager
   wagerRow: {
     backgroundColor: Colors.card2,
@@ -422,11 +483,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.textSecondary,
   },
-  wagerControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
+  wagerControls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wagerBtn: {
     width: 28,
     height: 28,
@@ -450,7 +507,6 @@ const styles = StyleSheet.create({
     minWidth: 60,
     textAlign: 'center',
   },
-  // Lock in button
   lockInBtn: {
     backgroundColor: Colors.maroon,
     borderRadius: 10,
@@ -459,15 +515,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  lockInBtnDisabled: {
-    opacity: 0.28,
-  },
+  lockInBtnDisabled: { opacity: 0.28 },
   lockInBtnText: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 17,
     color: '#F5EBED',
     letterSpacing: 0.5,
   },
+
   // Result card
   resultCard: {
     backgroundColor: Colors.card,
@@ -475,7 +530,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: 14,
     marginHorizontal: 12,
-    padding: 20,
+    padding: 24,
     alignItems: 'center',
     gap: 8,
   },
@@ -496,20 +551,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
   },
-  nextButton: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 9,
+  resultWaiting: {
+    fontFamily: 'DMMonoMedium',
+    fontSize: 9,
+    color: Colors.muted,
+    letterSpacing: 0.4,
     marginTop: 4,
   },
-  nextButtonText: {
-    fontFamily: 'DMSans',
-    fontSize: 13,
-    fontWeight: '500',
-    color: Colors.textPrimary,
-  },
+
   // Streak bar
   streakBar: {
     backgroundColor: Colors.card,
@@ -517,35 +566,97 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: 10,
     marginHorizontal: 12,
-    marginTop: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  streakLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
+  streakLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   streakCorrect: {
     fontFamily: 'DMMonoMedium',
     fontSize: 13,
     color: Colors.textPrimary,
   },
-  streakInARow: {
-    fontFamily: 'DMSans',
-    fontSize: 11,
-    color: Colors.muted,
+  streakInARow: { fontFamily: 'DMSans', fontSize: 11, color: Colors.muted },
+  streakPips: { flexDirection: 'row', gap: 5 },
+  streakPip: { width: 8, height: 8, borderRadius: 4 },
+
+  // Bacon Moment modal
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  streakPips: {
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(23,19,15,0.5)',
+  },
+  sheet: {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 22,
+    paddingTop: 16,
+    paddingBottom: 40,
+    gap: 0,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  baconTag: {
     flexDirection: 'row',
-    gap: 5,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.maroon,
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 16,
   },
-  streakPip: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  baconTagEmoji: { fontSize: 14 },
+  baconTagText: {
+    fontFamily: 'DMMonoMedium',
+    fontSize: 10,
+    color: '#F5EBED',
+    letterSpacing: 0.8,
+  },
+  sheetTitle: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 30,
+    color: Colors.textPrimary,
+    lineHeight: 34,
+    marginBottom: 10,
+  },
+  sheetQuestion: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 20,
+    color: Colors.navy,
+    lineHeight: 26,
+    marginBottom: 6,
+  },
+  sheetMeta: {
+    fontFamily: 'DMMonoMedium',
+    fontSize: 9,
+    color: Colors.muted,
+    letterSpacing: 0.4,
+    marginBottom: 24,
+  },
+  sheetCTA: {
+    backgroundColor: Colors.maroon,
+    borderRadius: 10,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  sheetCTAText: {
+    fontFamily: 'BarlowCondensedBold',
+    fontSize: 17,
+    color: '#F5EBED',
+    letterSpacing: 0.5,
   },
 });
