@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   scroll: { flex: 1 },
-  scrollContent: { gap: 0 },
+  scrollContent: { gap: 0, paddingBottom: 24 },
   pageHeader: {
     paddingHorizontal: 14,
     paddingTop: 16,

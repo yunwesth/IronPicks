@@ -246,6 +246,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: 0,
+    paddingBottom: 24,
   },
   // Header
   headerBar: {
