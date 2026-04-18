@@ -17,6 +17,7 @@ import BIcon from '../components/icons/BIcon';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon';
 import XCircleIcon from '../components/icons/XCircleIcon';
 import FlameIcon from '../components/icons/FlameIcon';
+import BaconIcon from '../components/icons/BaconIcon';
 
 type PickOption = 'scores' | 'holds' | null;
 type ResultState = 'correct' | 'incorrect' | null;
@@ -118,7 +119,7 @@ export default function PickScreen() {
   // ── Waiting state ──────────────────────────────────────────────────────────
   const renderWaiting = () => (
     <View style={styles.waitingCard}>
-      <Text style={styles.baconEmoji}>🥓</Text>
+      <View style={styles.baconEmoji}><BaconIcon size={40} color={Colors.maroon} /></View>
       <Text style={styles.waitingTitle}>Standing By</Text>
       <Text style={styles.waitingBody}>
         A Bacon Moment will appear when the next critical play is coming up.
@@ -264,7 +265,7 @@ export default function PickScreen() {
             <View style={styles.sheetHandle} />
 
             <View style={styles.baconTag}>
-              <Text style={styles.baconTagEmoji}>🥓</Text>
+              <BaconIcon size={16} color={Colors.maroon} />
               <Text style={styles.baconTagText}>BACON MOMENT</Text>
             </View>
 
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  baconEmoji: { fontSize: 36, marginBottom: 4 },
+  baconEmoji: { marginBottom: 4 },
   waitingTitle: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 22,
@@ -619,7 +620,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     marginBottom: 16,
   },
-  baconTagEmoji: { fontSize: 14 },
+  baconTagEmoji: {},
   baconTagText: {
     fontFamily: 'DMMonoMedium',
     fontSize: 10,

@@ -15,6 +15,8 @@ import { WALLET, STREAK } from '../constants/mockData';
 import BasesIcon from '../components/icons/BasesIcon';
 import BIcon from '../components/icons/BIcon';
 import FlameIcon from '../components/icons/FlameIcon';
+import BaseballIcon from '../components/icons/BaseballIcon';
+import BaconIcon from '../components/icons/BaconIcon';
 
 const KIND_COLOR = {
   score: '#C0F4DC',
@@ -134,7 +136,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.statLabel}>Pick Streak</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statEmoji}>⚾</Text>
+            <BaseballIcon size={16} color={Colors.navy} />
             <Text style={styles.statValue}>{game.inning}</Text>
             <Text style={styles.statLabel}>Inning</Text>
           </View>
@@ -146,7 +148,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           onPress={() => navigation.navigate('Pick')}
           activeOpacity={0.85}
         >
-          <Text style={styles.ctaPrimaryText}>🥓  Make a Pick</Text>
+          <View style={styles.ctaPrimaryInner}>
+            <BaconIcon size={18} color="#F5EBED" />
+            <Text style={styles.ctaPrimaryText}>Make a Pick</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.ctaSecondary}
@@ -248,7 +253,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5, borderColor: Colors.border, borderRadius: 12,
     paddingVertical: 14, alignItems: 'center', gap: 5,
   },
-  statEmoji: { fontSize: 16 },
   statValue: { fontFamily: 'BarlowCondensedBold', fontSize: 22, color: Colors.textPrimary, lineHeight: 26 },
   statLabel: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, letterSpacing: 0.3 },
 
@@ -258,6 +262,7 @@ const styles = StyleSheet.create({
     borderRadius: 12, marginHorizontal: 14, marginTop: 14,
     paddingVertical: 15, alignItems: 'center',
   },
+  ctaPrimaryInner: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ctaPrimaryText: { fontFamily: 'BarlowCondensedBold', fontSize: 18, color: '#F5EBED', letterSpacing: 0.5 },
   ctaSecondary: {
     borderWidth: 1, borderColor: Colors.border,

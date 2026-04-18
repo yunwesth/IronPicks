@@ -120,20 +120,20 @@ export type RedeemCategory = 'all' | 'food' | 'merch' | 'experience';
 
 export const REDEEM_ITEMS = [
   // Food & Drink
-  { id: 'f1', category: 'food' as RedeemCategory, emoji: '🌭', name: '$1 Off Any Food', desc: 'Valid at all concession stands this game', cost: 100, tag: 'Popular' },
-  { id: 'f2', category: 'food' as RedeemCategory, emoji: '🥤', name: 'Free Soft Drink', desc: 'Any size soft drink at any concession stand', cost: 175 },
-  { id: 'f3', category: 'food' as RedeemCategory, emoji: '🍺', name: '$3 Off Craft Beer', desc: 'Valid at the craft beer garden only', cost: 250 },
-  { id: 'f4', category: 'food' as RedeemCategory, emoji: '🧀', name: 'Free Nachos', desc: 'Loaded nachos at Section C stand', cost: 325 },
-  { id: 'f5', category: 'food' as RedeemCategory, emoji: '🍕', name: '$5 Off Any Order', desc: 'Any purchase $8 or more, all stands', cost: 450 },
+  { id: 'f1', category: 'food' as RedeemCategory, iconType: 'hotdog', name: '$1 Off Any Food', desc: 'Valid at all concession stands this game', cost: 100, tag: 'Popular' },
+  { id: 'f2', category: 'food' as RedeemCategory, iconType: 'drink', name: 'Free Soft Drink', desc: 'Any size soft drink at any concession stand', cost: 175 },
+  { id: 'f3', category: 'food' as RedeemCategory, iconType: 'beer', name: '$3 Off Craft Beer', desc: 'Valid at the craft beer garden only', cost: 250 },
+  { id: 'f4', category: 'food' as RedeemCategory, iconType: 'nacho', name: 'Free Nachos', desc: 'Loaded nachos at Section C stand', cost: 325 },
+  { id: 'f5', category: 'food' as RedeemCategory, iconType: 'pizza', name: '$5 Off Any Order', desc: 'Any purchase $8 or more, all stands', cost: 450 },
   // Merch
-  { id: 'm1', category: 'merch' as RedeemCategory, emoji: '👕', name: '10% Off Team Store', desc: 'One-time discount on any purchase', cost: 500, tag: 'Best Value' },
-  { id: 'm2', category: 'merch' as RedeemCategory, emoji: '🏅', name: '20% Off Team Store', desc: 'One-time discount on any purchase', cost: 900 },
-  { id: 'm3', category: 'merch' as RedeemCategory, emoji: '🧢', name: 'Free IronPigs Cap', desc: 'Standard team cap from the team store', cost: 1200 },
-  { id: 'm4', category: 'merch' as RedeemCategory, emoji: '🎽', name: 'Free Player Jersey', desc: 'Replica jersey, your choice of player', cost: 3500, tag: 'Rare' },
+  { id: 'm1', category: 'merch' as RedeemCategory, iconType: 'shirt', name: '10% Off Team Store', desc: 'One-time discount on any purchase', cost: 500, tag: 'Best Value' },
+  { id: 'm2', category: 'merch' as RedeemCategory, iconType: 'medal', name: '20% Off Team Store', desc: 'One-time discount on any purchase', cost: 900 },
+  { id: 'm3', category: 'merch' as RedeemCategory, iconType: 'cap', name: 'Free IronPigs Cap', desc: 'Standard team cap from the team store', cost: 1200 },
+  { id: 'm4', category: 'merch' as RedeemCategory, iconType: 'jersey', name: 'Free Player Jersey', desc: 'Replica jersey, your choice of player', cost: 3500, tag: 'Rare' },
   // Experiences
-  { id: 'e1', category: 'experience' as RedeemCategory, emoji: '🐷', name: 'Meet Ferrous the Pig', desc: 'Mascot meet & greet during 7th inning stretch', cost: 1500 },
-  { id: 'e2', category: 'experience' as RedeemCategory, emoji: '📸', name: 'Field Photo Opp', desc: 'Post-game access for a photo on the field', cost: 2500 },
-  { id: 'e3', category: 'experience' as RedeemCategory, emoji: '⚾', name: 'First Pitch Ceremony', desc: 'Throw out the first pitch at a future game', cost: 5000, tag: 'Legendary' },
+  { id: 'e1', category: 'experience' as RedeemCategory, iconType: 'pig', name: 'Meet Ferrous the Pig', desc: 'Mascot meet & greet during 7th inning stretch', cost: 1500 },
+  { id: 'e2', category: 'experience' as RedeemCategory, iconType: 'camera', name: 'Field Photo Opp', desc: 'Post-game access for a photo on the field', cost: 2500 },
+  { id: 'e3', category: 'experience' as RedeemCategory, iconType: 'baseball', name: 'First Pitch Ceremony', desc: 'Throw out the first pitch at a future game', cost: 5000, tag: 'Legendary' },
 ];
 
 export const PITCHER_STATS = {

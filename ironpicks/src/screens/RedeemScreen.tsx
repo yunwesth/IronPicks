@@ -12,14 +12,19 @@ import QRCode from 'react-native-qrcode-svg';
 import { Colors } from '../constants/colors';
 import { WALLET, REDEMPTION_HISTORY, REDEEM_ITEMS, RedeemCategory } from '../constants/mockData';
 import BIcon from '../components/icons/BIcon';
+import FoodIcon from '../components/icons/FoodIcon';
+import ShirtIcon from '../components/icons/ShirtIcon';
+import StarIcon from '../components/icons/StarIcon';
+import RewardIcon from '../components/icons/RewardIcon';
 
 type RedeemItem = typeof REDEEM_ITEMS[0];
 
-const CATEGORIES: { id: RedeemCategory; label: string }[] = [
+type Category = { id: RedeemCategory; label: string; icon?: React.ReactNode };
+const CATEGORIES: Category[] = [
   { id: 'all', label: 'All' },
-  { id: 'food', label: '🍟 Food' },
-  { id: 'merch', label: '👕 Merch' },
-  { id: 'experience', label: '⭐ Exp' },
+  { id: 'food', label: 'Food', icon: <FoodIcon size={13} color={Colors.navy} /> },
+  { id: 'merch', label: 'Merch', icon: <ShirtIcon size={13} color={Colors.navy} /> },
+  { id: 'experience', label: 'Exp', icon: <StarIcon size={13} color={Colors.navy} /> },
 ];
 
 function randomCode() {
@@ -75,6 +80,7 @@ export default function RedeemScreen() {
               onPress={() => setCategory(c.id)}
               activeOpacity={0.75}
             >
+              {c.icon && <View style={styles.tabIcon}>{c.icon}</View>}
               <Text style={[styles.tabText, category === c.id && styles.tabTextActive]}>
                 {c.label}
               </Text>
@@ -101,8 +107,10 @@ export default function RedeemScreen() {
                   </View>
                 )}
 
-                {/* Emoji + info */}
-                <Text style={styles.itemEmoji}>{item.emoji}</Text>
+                {/* Icon + info */}
+                <View style={styles.itemEmoji}>
+                  <RewardIcon type={item.iconType as any} size={32} color={Colors.navy} />
+                </View>
                 <Text style={[styles.itemName, !canAfford && styles.itemNameLocked]}>{item.name}</Text>
                 <Text style={styles.itemDesc}>{item.desc}</Text>
 
@@ -173,7 +181,9 @@ export default function RedeemScreen() {
               <Text style={styles.sheetLabel}>CONFIRM REDEMPTION</Text>
 
               <View style={styles.confirmItem}>
-                <Text style={styles.confirmEmoji}>{confirming.emoji}</Text>
+                <View style={styles.confirmEmoji}>
+                  <RewardIcon type={confirming.iconType as any} size={32} color={Colors.navy} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.confirmName}>{confirming.name}</Text>
                   <Text style={styles.confirmDesc}>{confirming.desc}</Text>
@@ -213,7 +223,9 @@ export default function RedeemScreen() {
         <View style={styles.successOverlay}>
           {redeemed && (
             <View style={styles.successCard}>
-              <Text style={styles.successEmoji}>{redeemed.item.emoji}</Text>
+              <View style={styles.successEmoji}>
+                <RewardIcon type={redeemed.item.iconType as any} size={48} color={Colors.navy} />
+              </View>
               <View style={styles.successBadge}>
                 <Text style={styles.successBadgeText}>REDEEMED ✓</Text>
               </View>
@@ -351,7 +363,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
     letterSpacing: 0.4,
   },
-  itemEmoji: { fontSize: 30, marginBottom: 8 },
+  itemEmoji: { marginBottom: 8, alignItems: 'center' },
+  tabIcon: { marginRight: 4 },
   itemName: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 18,
@@ -496,7 +509,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
   },
-  confirmEmoji: { fontSize: 32 },
+  confirmEmoji: { marginRight: 4 },
   confirmName: {
     fontFamily: 'BarlowCondensedBold',
     fontSize: 18,
@@ -573,7 +586,7 @@ const styles = StyleSheet.create({
     maxWidth: 340,
     gap: 0,
   },
-  successEmoji: { fontSize: 44, marginBottom: 10 },
+  successEmoji: { marginBottom: 10 },
   successBadge: {
     backgroundColor: Colors.greenBg,
     borderRadius: 6,
