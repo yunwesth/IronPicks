@@ -1,150 +1,176 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
+  Image,
+  Animated,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { GAME, WALLET, STREAK, ACTIVE_QUESTION, LEADERBOARD } from '../constants/mockData';
-import Scoreboard from '../components/Scoreboard';
+import { useGame } from '../context/GameContext';
+import { WALLET, STREAK } from '../constants/mockData';
+import BasesIcon from '../components/icons/BasesIcon';
 import BIcon from '../components/icons/BIcon';
 import FlameIcon from '../components/icons/FlameIcon';
-import StarIcon from '../components/icons/StarIcon';
+
+const KIND_COLOR = {
+  score: '#C0F4DC',
+  hit: '#E8C060',
+  out: '#F4A0A0',
+  neutral: '#7A94BC',
+};
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
-  const currentUser = LEADERBOARD.find((p) => p.isCurrentUser);
+  const game = useGame();
+  const scoreScale = useRef(new Animated.Value(1)).current;
+  const tickerOpacity = useRef(new Animated.Value(1)).current;
+  const prevEvent = useRef(game.lastEvent);
+
+  // Bounce score on change
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(scoreScale, { toValue: 1.2, duration: 200, useNativeDriver: true }),
+      Animated.spring(scoreScale, { toValue: 1, useNativeDriver: true, bounciness: 8 }),
+    ]).start();
+  }, [game.homeScore, game.awayScore]);
+
+  // Fade-flash ticker on new event
+  useEffect(() => {
+    if (game.lastEvent === prevEvent.current) return;
+    prevEvent.current = game.lastEvent;
+    Animated.sequence([
+      Animated.timing(tickerOpacity, { toValue: 0, duration: 120, useNativeDriver: true }),
+      Animated.timing(tickerOpacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+    ]).start();
+  }, [game.lastEvent]);
+
+  const inningLabel = `${game.inningHalf === 'bottom' ? '▼' : '▲'} ${game.inning}th`;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+        {/* ── Top header ─────────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image
-              source={require('../../assets/ironpigs-logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <View style={styles.headerText}>
+            <Image source={require('../../assets/ironpigs-logo.png')} style={styles.logo} resizeMode="contain" />
+            <View>
               <Text style={styles.teamName}>Lehigh Valley IronPigs</Text>
               <Text style={styles.subTitle}>ironpicks · fan picks</Text>
             </View>
           </View>
           <View style={styles.walletChip}>
-            <BIcon size={14} color={Colors.navy} />
+            <BIcon size={13} color={Colors.navy} />
             <Text style={styles.walletText}>{WALLET.balance} BB</Text>
           </View>
         </View>
 
-        {/* Hero — live game banner */}
+        {/* ── Live game hero ──────────────────────────────────── */}
         <View style={styles.hero}>
-          <View style={styles.livePill}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE NOW · {GAME.venue}</Text>
+          {/* Venue + live badge */}
+          <View style={styles.heroTopRow}>
+            <Text style={styles.heroVenue}>{game.venue}</Text>
+            <View style={styles.livePill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>LIVE</Text>
+            </View>
           </View>
-          <Text style={styles.heroMatchup}>
-            {GAME.homeTeam} {GAME.homeScore}{'  '}·{'  '}{GAME.awayScore} {GAME.awayTeam}
-          </Text>
-          <Text style={styles.heroInning}>
-            {GAME.inningHalf === 'bottom' ? '▼' : '▲'} {GAME.inning}th INNING
-          </Text>
+
+          {/* Big score */}
+          <View style={styles.scoreRow}>
+            <View style={styles.teamBlock}>
+              <Text style={styles.teamAbbr}>{game.awayTeam}</Text>
+              <Animated.Text style={[styles.scoreAway, { transform: [{ scale: scoreScale }] }]}>
+                {game.awayScore}
+              </Animated.Text>
+            </View>
+            <Text style={styles.scoreDot}>·</Text>
+            <View style={[styles.teamBlock, styles.teamBlockHome]}>
+              <Text style={styles.teamAbbr}>{game.homeTeam}</Text>
+              <Animated.Text style={[styles.scoreHome, { transform: [{ scale: scoreScale }] }]}>
+                {game.homeScore}
+              </Animated.Text>
+            </View>
+          </View>
+
+          {/* Situation chips */}
+          <View style={styles.situationRow}>
+            <View style={styles.sitChip}>
+              <Text style={styles.sitChipText}>{inningLabel}</Text>
+            </View>
+            <View style={styles.sitChip}>
+              <BasesIcon size={20} runners={game.runners} />
+            </View>
+            <View style={styles.sitChip}>
+              <Text style={styles.sitChipText}>{game.outs} out{game.outs !== 1 ? 's' : ''}</Text>
+            </View>
+            <View style={styles.sitChip}>
+              <Text style={styles.sitChipText}>{game.count.balls}–{game.count.strikes}</Text>
+            </View>
+          </View>
+
+          {/* Live ticker */}
+          <Animated.View style={[styles.ticker, { opacity: tickerOpacity }]}>
+            <View style={[styles.tickerDot, { backgroundColor: KIND_COLOR[game.eventKind] }]} />
+            <Text style={[styles.tickerText, { color: KIND_COLOR[game.eventKind] }]}>
+              {game.lastEvent}
+            </Text>
+          </Animated.View>
         </View>
 
-        {/* Live scoreboard */}
-        <View style={styles.gap10} />
-        <Scoreboard />
-
-        {/* Quick-stat chips */}
+        {/* ── Quick stats ─────────────────────────────────────── */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, styles.statIconNavy]}>
-              <BIcon size={15} color={Colors.navy} />
-            </View>
+            <BIcon size={15} color={Colors.navy} />
             <Text style={styles.statValue}>{WALLET.balance}</Text>
             <Text style={styles.statLabel}>BB Balance</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, styles.statIconAmber]}>
-              <FlameIcon size={15} />
-            </View>
+            <FlameIcon size={15} />
             <Text style={styles.statValue}>{STREAK.correct}</Text>
             <Text style={styles.statLabel}>Pick Streak</Text>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIcon, styles.statIconMaroon]}>
-              <StarIcon size={15} color="#F5EBED" />
-            </View>
-            <Text style={styles.statValue}>#{currentUser?.rank ?? '—'}</Text>
-            <Text style={styles.statLabel}>Your Rank</Text>
+            <Text style={styles.statEmoji}>⚾</Text>
+            <Text style={styles.statValue}>{game.inning}</Text>
+            <Text style={styles.statLabel}>Inning</Text>
           </View>
         </View>
 
-        {/* Featured challenge */}
-        <View style={styles.sectionLabel}>
-          <Text style={styles.sectionLabelText}>FEATURED CHALLENGE</Text>
-        </View>
+        {/* ── CTA buttons ─────────────────────────────────────── */}
         <TouchableOpacity
-          style={styles.challengeCard}
+          style={styles.ctaPrimary}
           onPress={() => navigation.navigate('Pick')}
-          activeOpacity={0.88}
+          activeOpacity={0.85}
         >
-          <View style={styles.challengeTop}>
-            <Text style={styles.challengeMeta}>{ACTIVE_QUESTION.multiplier}× MULTIPLIER · CRITICAL MOMENT</Text>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveBadgeDot} />
-              <Text style={styles.liveBadgeText}>LIVE</Text>
-            </View>
-          </View>
-          <Text style={styles.challengeQuestion}>{ACTIVE_QUESTION.text}</Text>
-          <View style={styles.challengeCTA}>
-            <Text style={styles.challengeCTAText}>Start Picking  →</Text>
-          </View>
+          <Text style={styles.ctaPrimaryText}>🥓  Make a Pick</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.ctaSecondary}
+          onPress={() => navigation.navigate('Game')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.ctaSecondaryText}>Watch Live Game  →</Text>
         </TouchableOpacity>
 
-        {/* Leaderboard preview */}
+        {/* ── Play log preview ────────────────────────────────── */}
         <View style={styles.sectionLabel}>
-          <Text style={styles.sectionLabelText}>LEADERBOARD</Text>
+          <Text style={styles.sectionLabelText}>PLAY-BY-PLAY</Text>
         </View>
-        <View style={styles.leaderCard}>
-          {LEADERBOARD.slice(0, 3).map((player, i) => (
-            <View
-              key={player.id}
-              style={[styles.leaderRow, i < 2 && styles.leaderRowBorder]}
-            >
-              <Text style={styles.leaderRank}>#{player.rank}</Text>
-              <Text style={styles.leaderName}>{player.username}</Text>
-              <View style={styles.leaderBB}>
-                <BIcon size={10} color={Colors.navy} />
-                <Text style={styles.leaderBBText}>{player.bbTotal}</Text>
-              </View>
+        <View style={styles.logCard}>
+          {game.playLog.slice(0, 5).map((entry, i) => (
+            <View key={entry.id} style={[styles.logRow, i < 4 && styles.logRowBorder]}>
+              <Text style={styles.logInning}>{entry.inning}</Text>
+              <Text style={styles.logDesc} numberOfLines={1}>{entry.desc}</Text>
+              <View style={[styles.logDot, { backgroundColor: KIND_COLOR[entry.kind] }]} />
             </View>
           ))}
-          {currentUser && currentUser.rank > 3 && (
-            <>
-              <View style={styles.leaderEllipsis}>
-                <Text style={styles.leaderEllipsisText}>· · ·</Text>
-              </View>
-              <View style={[styles.leaderRow, styles.leaderRowYou]}>
-                <Text style={[styles.leaderRank, styles.leaderRankYou]}>#{currentUser.rank}</Text>
-                <Text style={[styles.leaderName, styles.leaderNameYou]}>you</Text>
-                <View style={styles.leaderBB}>
-                  <BIcon size={10} color={Colors.maroon} />
-                  <Text style={[styles.leaderBBText, styles.leaderBBYou]}>{currentUser.bbTotal}</Text>
-                </View>
-              </View>
-            </>
-          )}
         </View>
 
-        <View style={styles.bottomPad} />
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -153,252 +179,108 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.surface },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 24 },
+  scrollContent: { gap: 0 },
 
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
     backgroundColor: Colors.card,
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.border,
+    borderBottomWidth: 0.5, borderBottomColor: Colors.border,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  logo: { width: 44, height: 44 },
-  headerText: { gap: 2 },
-  teamName: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 14,
-    color: Colors.navy,
-    letterSpacing: 0.2,
-  },
-  subTitle: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: Colors.muted,
-    letterSpacing: 0.3,
-  },
+  logo: { width: 40, height: 40 },
+  teamName: { fontFamily: 'BarlowCondensedBold', fontSize: 14, color: Colors.navy, letterSpacing: 0.2 },
+  subTitle: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, letterSpacing: 0.3, marginTop: 1 },
   walletChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.navyPale,
-    borderWidth: 1,
-    borderColor: Colors.borderNavyPale,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.navyPale, borderWidth: 1, borderColor: Colors.borderNavyPale,
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5,
   },
   walletText: { fontFamily: 'DMMonoMedium', fontSize: 12, color: Colors.navy },
 
   // Hero
   hero: {
     backgroundColor: Colors.navy,
-    paddingHorizontal: 14,
-    paddingTop: 20,
-    paddingBottom: 22,
-    alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18,
+    gap: 12,
   },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroVenue: { fontFamily: 'DMMonoMedium', fontSize: 9, color: '#7A94BC', letterSpacing: 0.4 },
   livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: 'rgba(192,244,220,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(192,244,220,0.25)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    borderWidth: 1, borderColor: 'rgba(192,244,220,0.3)',
+    borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#C0F4DC' },
-  liveText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: '#C0F4DC',
-    letterSpacing: 0.8,
-  },
-  heroMatchup: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 42,
-    color: '#F0ECE6',
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  heroInning: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 10,
-    color: '#7A94BC',
-    letterSpacing: 0.5,
-  },
+  liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#C0F4DC' },
+  liveText: { fontFamily: 'DMMonoMedium', fontSize: 9, color: '#C0F4DC', letterSpacing: 0.8 },
 
-  gap10: { height: 10 },
+  scoreRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 8 },
+  teamBlock: { alignItems: 'center', flex: 1 },
+  teamBlockHome: { alignItems: 'center' },
+  teamAbbr: { fontFamily: 'DMMonoMedium', fontSize: 11, color: '#7A94BC', letterSpacing: 0.5, marginBottom: 2 },
+  scoreAway: { fontFamily: 'BarlowCondensedBold', fontSize: 64, color: '#3A526E', lineHeight: 68 },
+  scoreHome: { fontFamily: 'BarlowCondensedBold', fontSize: 64, color: '#F0ECE6', lineHeight: 68 },
+  scoreDot: { fontFamily: 'DMMonoMedium', fontSize: 28, color: '#2A3E60', paddingBottom: 10 },
+
+  situationRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  sitChip: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    alignItems: 'center', justifyContent: 'center',
+    minWidth: 52,
+  },
+  sitChipText: { fontFamily: 'DMMonoMedium', fontSize: 10, color: '#A0BADC', letterSpacing: 0.2 },
+
+  ticker: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  tickerDot: { width: 6, height: 6, borderRadius: 3 },
+  tickerText: { fontFamily: 'DMMonoMedium', fontSize: 10, letterSpacing: 0.2, flex: 1 },
 
   // Stats
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginHorizontal: 12,
-    marginTop: 10,
-  },
+  statsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 14, marginTop: 14 },
   statCard: {
-    flex: 1,
-    backgroundColor: Colors.card,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    gap: 5,
+    flex: 1, backgroundColor: Colors.card,
+    borderWidth: 0.5, borderColor: Colors.border, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center', gap: 5,
   },
-  statIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  statIconNavy: { backgroundColor: Colors.navyPale },
-  statIconAmber: { backgroundColor: '#FFF5E6' },
-  statIconMaroon: { backgroundColor: Colors.maroon },
-  statValue: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 22,
-    color: Colors.textPrimary,
-    lineHeight: 26,
-  },
-  statLabel: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: Colors.muted,
-    letterSpacing: 0.3,
-  },
+  statEmoji: { fontSize: 16 },
+  statValue: { fontFamily: 'BarlowCondensedBold', fontSize: 22, color: Colors.textPrimary, lineHeight: 26 },
+  statLabel: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, letterSpacing: 0.3 },
 
-  // Section label
-  sectionLabel: { paddingHorizontal: 14, paddingTop: 18, paddingBottom: 8 },
-  sectionLabelText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: Colors.muted,
-    letterSpacing: 0.5,
-  },
-
-  // Challenge card
-  challengeCard: {
-    marginHorizontal: 12,
-    backgroundColor: Colors.card,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  challengeTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.border,
-  },
-  challengeMeta: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: Colors.muted,
-    letterSpacing: 0.4,
-  },
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  // CTAs
+  ctaPrimary: {
     backgroundColor: Colors.maroon,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderRadius: 12, marginHorizontal: 14, marginTop: 14,
+    paddingVertical: 15, alignItems: 'center',
   },
-  liveBadgeDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#F5EBED' },
-  liveBadgeText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: '#F5EBED',
-    letterSpacing: 0.5,
-  },
-  challengeQuestion: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 20,
-    color: Colors.textPrimary,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    lineHeight: 26,
-  },
-  challengeCTA: {
-    backgroundColor: Colors.maroon,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  challengeCTAText: {
-    fontFamily: 'BarlowCondensedBold',
-    fontSize: 16,
-    color: '#F5EBED',
-    letterSpacing: 0.5,
-  },
-
-  // Leaderboard
-  leaderCard: {
-    marginHorizontal: 12,
+  ctaPrimaryText: { fontFamily: 'BarlowCondensedBold', fontSize: 18, color: '#F5EBED', letterSpacing: 0.5 },
+  ctaSecondary: {
+    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 12, marginHorizontal: 14, marginTop: 8,
+    paddingVertical: 13, alignItems: 'center',
     backgroundColor: Colors.card,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    borderRadius: 14,
-    overflow: 'hidden',
   },
-  leaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 10,
-  },
-  leaderRowBorder: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  leaderRowYou: {
-    backgroundColor: '#FEF8F8',
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.border,
-  },
-  leaderRank: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 11,
-    color: Colors.muted,
-    width: 28,
-  },
-  leaderRankYou: { color: Colors.maroon },
-  leaderName: {
-    flex: 1,
-    fontFamily: 'DMSans',
-    fontSize: 13,
-    color: Colors.textPrimary,
-  },
-  leaderNameYou: { fontWeight: '500', color: Colors.maroon },
-  leaderBB: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  leaderBBText: { fontFamily: 'DMMonoMedium', fontSize: 12, color: Colors.navy },
-  leaderBBYou: { color: Colors.maroon },
-  leaderEllipsis: {
-    alignItems: 'center',
-    paddingVertical: 4,
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.border,
-  },
-  leaderEllipsisText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 11,
-    color: Colors.muted,
-    letterSpacing: 2,
-  },
+  ctaSecondaryText: { fontFamily: 'BarlowCondensedBold', fontSize: 16, color: Colors.navy, letterSpacing: 0.3 },
 
-  bottomPad: { height: 16 },
+  // Play log
+  sectionLabel: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 },
+  sectionLabelText: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, letterSpacing: 0.5 },
+  logCard: {
+    marginHorizontal: 14,
+    backgroundColor: Colors.card,
+    borderWidth: 0.5, borderColor: Colors.border, borderRadius: 14, overflow: 'hidden',
+  },
+  logRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  logRowBorder: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  logInning: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, width: 42, letterSpacing: 0.2 },
+  logDesc: { flex: 1, fontFamily: 'DMSans', fontSize: 12, color: Colors.textPrimary },
+  logDot: { width: 7, height: 7, borderRadius: 4 },
 });

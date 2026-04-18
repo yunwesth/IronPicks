@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { PLAY_BY_PLAY, PITCHER_STATS, BATTER, PITCHER } from '../constants/mockData';
+import { PITCHER_STATS, BATTER, PITCHER } from '../constants/mockData';
+import { useGame } from '../context/GameContext';
 import Scoreboard from '../components/Scoreboard';
 
 const STAT_TILES = [
@@ -12,7 +13,15 @@ const STAT_TILES = [
   { label: 'BB', value: PITCHER_STATS.bb },
 ];
 
+const KIND_COLOR: Record<string, string> = {
+  score: '#C0F4DC',
+  hit: '#E8C060',
+  out: '#F4A0A0',
+  neutral: '#7A94BC',
+};
+
 export default function GameScreen() {
+  const game = useGame();
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
@@ -62,28 +71,16 @@ export default function GameScreen() {
           <View style={styles.pbpHeader}>
             <Text style={styles.pbpHeaderText}>PLAY-BY-PLAY</Text>
           </View>
-          {PLAY_BY_PLAY.map((play) => (
+          {game.playLog.map((play) => (
             <View
               key={play.id}
-              style={[styles.playCard, play.isScoring && styles.playCardScoring]}
+              style={[styles.playCard, play.kind === 'score' && styles.playCardScoring]}
             >
-              <Text style={styles.playInning}>{play.inning}</Text>
-              <Text style={styles.playDescription}>{play.description}</Text>
-              <View
-                style={[
-                  styles.resultBadge,
-                  play.isScoring ? styles.resultBadgeScoring : styles.resultBadgeDefault,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.resultBadgeText,
-                    play.isScoring && styles.resultBadgeTextScoring,
-                  ]}
-                >
-                  {play.result}
-                </Text>
+              <View style={styles.playTopRow}>
+                <Text style={styles.playInning}>{play.inning}</Text>
+                <View style={[styles.kindDot, { backgroundColor: KIND_COLOR[play.kind] }]} />
               </View>
+              <Text style={styles.playDescription}>{play.desc}</Text>
             </View>
           ))}
         </View>
@@ -224,8 +221,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   playCardScoring: {
-    borderLeftWidth: 2,
     borderLeftColor: Colors.maroon,
+  },
+  playTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   playInning: {
     fontFamily: 'DMMonoMedium',
@@ -233,33 +234,16 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     letterSpacing: 0.5,
   },
+  kindDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
   playDescription: {
     fontFamily: 'DMSans',
     fontSize: 14,
     color: Colors.textPrimary,
     lineHeight: 20,
-  },
-  resultBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginTop: 2,
-  },
-  resultBadgeDefault: {
-    backgroundColor: Colors.navyPale,
-  },
-  resultBadgeScoring: {
-    backgroundColor: '#F5EBED',
-  },
-  resultBadgeText: {
-    fontFamily: 'DMMonoMedium',
-    fontSize: 9,
-    color: Colors.navy,
-    letterSpacing: 0.3,
-  },
-  resultBadgeTextScoring: {
-    color: Colors.maroon,
   },
   bottomPad: { height: 16 },
 });
