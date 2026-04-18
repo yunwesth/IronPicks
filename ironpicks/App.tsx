@@ -103,8 +103,8 @@ function PhoneFrame({ children }: { children: React.ReactNode }) {
         <View style={[styles.screen, { width: phoneW, height: phoneH, borderRadius: screenR }]}>
           {/* Dynamic island */}
           <View style={styles.dynamicIsland} />
-          {/* App content */}
-          <View style={{ flex: 1 }}>
+          {/* App content — padded below the dynamic island */}
+          <View style={{ flex: 1, paddingTop: 54 }}>
             {children}
           </View>
           {/* Home indicator */}
