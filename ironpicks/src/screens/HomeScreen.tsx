@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Image,
   Animated,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
@@ -30,6 +31,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const scoreScale = useRef(new Animated.Value(1)).current;
   const tickerOpacity = useRef(new Animated.Value(1)).current;
   const prevEvent = useRef(game.lastEvent);
+  const [gameOverDismissed, setGameOverDismissed] = useState(false);
 
   // Bounce score on change
   useEffect(() => {
@@ -75,9 +77,9 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
           {/* Venue + live badge */}
           <View style={styles.heroTopRow}>
             <Text style={styles.heroVenue}>{game.venue}</Text>
-            <View style={styles.livePill}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>LIVE</Text>
+            <View style={[styles.livePill, game.isGameOver && styles.finalPill]}>
+              {!game.isGameOver && <View style={styles.liveDot} />}
+              <Text style={styles.liveText}>{game.isGameOver ? 'FINAL' : 'LIVE'}</Text>
             </View>
           </View>
 
@@ -177,6 +179,52 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* ── 경기 종료 모달 ─────────────────────────────────────── */}
+      <Modal
+        visible={game.isGameOver && !gameOverDismissed}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setGameOverDismissed(true)}
+      >
+        <View style={styles.gameOverOverlay}>
+          <View style={styles.gameOverCard}>
+            <View style={styles.gameOverBadge}>
+              <Text style={styles.gameOverBadgeText}>FINAL</Text>
+            </View>
+            <Text style={styles.gameOverTitle}>경기 종료</Text>
+            <Text style={styles.gameOverVenue}>{game.venue}</Text>
+
+            <View style={styles.gameOverScoreRow}>
+              <View style={styles.gameOverTeam}>
+                <Text style={styles.gameOverTeamAbbr}>{game.awayTeam}</Text>
+                <Text style={styles.gameOverScoreDim}>{game.awayScore}</Text>
+              </View>
+              <Text style={styles.gameOverDot}>·</Text>
+              <View style={styles.gameOverTeam}>
+                <Text style={styles.gameOverTeamAbbr}>{game.homeTeam}</Text>
+                <Text style={styles.gameOverScoreBright}>{game.homeScore}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.gameOverWinner}>
+              {game.homeScore > game.awayScore
+                ? `${game.homeTeam} 승리!`
+                : game.awayScore > game.homeScore
+                ? `${game.awayTeam} 승리!`
+                : '무승부'}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.gameOverBtn}
+              onPress={() => setGameOverDismissed(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.gameOverBtnText}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -217,6 +265,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(192,244,220,0.12)',
     borderWidth: 1, borderColor: 'rgba(192,244,220,0.3)',
     borderRadius: 20, paddingHorizontal: 9, paddingVertical: 4,
+  },
+  finalPill: {
+    backgroundColor: 'rgba(240,236,230,0.12)',
+    borderColor: 'rgba(240,236,230,0.3)',
   },
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#C0F4DC' },
   liveText: { fontFamily: 'DMMonoMedium', fontSize: 9, color: '#C0F4DC', letterSpacing: 0.8 },
@@ -288,4 +340,38 @@ const styles = StyleSheet.create({
   logInning: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, width: 42, letterSpacing: 0.2 },
   logDesc: { flex: 1, fontFamily: 'DMSans', fontSize: 12, color: Colors.textPrimary },
   logDot: { width: 7, height: 7, borderRadius: 4 },
+
+  // Game over modal
+  gameOverOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  gameOverCard: {
+    backgroundColor: Colors.card, borderRadius: 20,
+    width: '100%', alignItems: 'center',
+    padding: 28, gap: 10,
+    borderWidth: 0.5, borderColor: Colors.border,
+  },
+  gameOverBadge: {
+    backgroundColor: Colors.maroon, borderRadius: 6,
+    paddingHorizontal: 12, paddingVertical: 4,
+  },
+  gameOverBadgeText: { fontFamily: 'DMMonoMedium', fontSize: 10, color: '#F5EBED', letterSpacing: 1.5 },
+  gameOverTitle: { fontFamily: 'BarlowCondensedBold', fontSize: 32, color: Colors.navy, letterSpacing: 0.5, marginTop: 4 },
+  gameOverVenue: { fontFamily: 'DMMonoMedium', fontSize: 9, color: Colors.muted, letterSpacing: 0.4 },
+  gameOverScoreRow: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 12, marginTop: 8,
+  },
+  gameOverTeam: { alignItems: 'center', gap: 2 },
+  gameOverTeamAbbr: { fontFamily: 'DMMonoMedium', fontSize: 11, color: Colors.muted, letterSpacing: 0.5 },
+  gameOverScoreDim: { fontFamily: 'BarlowCondensedBold', fontSize: 56, color: Colors.muted, lineHeight: 60 },
+  gameOverScoreBright: { fontFamily: 'BarlowCondensedBold', fontSize: 56, color: Colors.navy, lineHeight: 60 },
+  gameOverDot: { fontFamily: 'DMMonoMedium', fontSize: 24, color: Colors.border, paddingBottom: 8 },
+  gameOverWinner: { fontFamily: 'BarlowCondensedBold', fontSize: 18, color: Colors.maroon, letterSpacing: 0.3 },
+  gameOverBtn: {
+    marginTop: 8, backgroundColor: Colors.navy,
+    borderRadius: 12, width: '100%',
+    paddingVertical: 14, alignItems: 'center',
+  },
+  gameOverBtnText: { fontFamily: 'BarlowCondensedBold', fontSize: 16, color: '#F0ECE6', letterSpacing: 0.5 },
 });

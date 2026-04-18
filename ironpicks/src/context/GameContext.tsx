@@ -16,6 +16,7 @@ export type GameState = {
   count: { balls: number; strikes: number };
   venue: string;
   isLive: boolean;
+  isGameOver: boolean;
   lastEvent: string;
   eventKind: 'neutral' | 'hit' | 'score' | 'out';
   playLog: { id: string; inning: string; desc: string; kind: 'neutral' | 'hit' | 'score' | 'out' }[];
@@ -38,6 +39,7 @@ const initial: GameState = {
   count: { balls: 2, strikes: 1 },
   venue: 'COCA-COLA PARK · ALLENTOWN, PA',
   isLive: true,
+  isGameOver: false,
   lastEvent: 'Full count on Alcantara — runners on 2nd & 3rd',
   eventKind: 'neutral',
   playLog: [
@@ -98,6 +100,9 @@ function recordOut(state: GameState): GameState {
   const newOuts = state.outs + 1;
   if (newOuts >= 3) {
     const isBot = state.inningHalf === 'bottom';
+    if (isBot && state.inning >= 9) {
+      return { ...state, outs: 3, isGameOver: true, isLive: false };
+    }
     return {
       ...state,
       outs: 0,
@@ -131,6 +136,7 @@ function pushLog(
 }
 
 function tick(s: GameState): GameState {
+  if (s.isGameOver) return s;
   const play = pickPlay();
   const bat = rand(s.inningHalf === 'bottom' ? LV : SWB);
   const fld = rand(s.inningHalf === 'bottom' ? SWB : LV);
