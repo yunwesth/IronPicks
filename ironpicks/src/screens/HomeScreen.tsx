@@ -180,7 +180,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      {/* ── 경기 종료 모달 ─────────────────────────────────────── */}
+      {/* ── Game over modal ─────────────────────────────────────── */}
       <Modal
         visible={game.isGameOver && !gameOverDismissed}
         transparent
@@ -192,7 +192,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <View style={styles.gameOverBadge}>
               <Text style={styles.gameOverBadgeText}>FINAL</Text>
             </View>
-            <Text style={styles.gameOverTitle}>경기 종료</Text>
+            <Text style={styles.gameOverTitle}>Game Over</Text>
             <Text style={styles.gameOverVenue}>{game.venue}</Text>
 
             <View style={styles.gameOverScoreRow}>
@@ -209,10 +209,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
 
             <Text style={styles.gameOverWinner}>
               {game.homeScore > game.awayScore
-                ? `${game.homeTeam} 승리!`
+                ? `${game.homeTeam} Win!`
                 : game.awayScore > game.homeScore
-                ? `${game.awayTeam} 승리!`
-                : '무승부'}
+                ? `${game.awayTeam} Win!`
+                : 'Tie Game'}
             </Text>
 
             <TouchableOpacity
@@ -220,7 +220,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
               onPress={() => setGameOverDismissed(true)}
               activeOpacity={0.85}
             >
-              <Text style={styles.gameOverBtnText}>확인</Text>
+              <Text style={styles.gameOverBtnText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
         </View>
